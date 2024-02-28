@@ -1,0 +1,9 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=2]
+
+[ext_resource path="res://CSS/CSS_shader.gdshader" type="Shader" id=1]
+
+[resource]
+shader = ExtResource( 1 )
+shader_param/blur_amount = 2.5
+shader_param/set_color = Color( 0.956863, 0.658824, 0.392157, 0.25098 )
+shader_param/chroma_color = Color( 0, 1, 0, 0 )
