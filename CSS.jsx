@@ -20,11 +20,18 @@ export default class CSS extends godot.Panel {
 
     constructor() {
         super();
-        this.currentState = {
-            left: 0,   right: 0,
-            top: 0,    bottom: 0,
-            width: 20, height: 20,
+        this.initialState = {
+            "margin_left":   { v: 0, p: false },
+            "margin_top":    { v: 0, p: false },
+            "anchor_left":   { v: 0, p: false },
+            "anchor_right":  { v: 0, p: false },
+            "anchor_top":    { v: 0, p: false },
+            "anchor_bottom": { v: 0, p: false },
+            "margin_right":  { v: 20, p: false },
+            "margin_bottom": { v: 20, p: false },
+            "rect_scale": new godot.Vector2(1,1),
         };
+        this.currentState = { ...this.initialState };
         this.states = {};
         this.parent = null;
         this.currentStateName = "init";
@@ -124,6 +131,10 @@ export default class CSS extends godot.Panel {
         const parent = this.parent;
         const p_x = parent.rect_size.x;
         const p_y = parent.rect_size.y;
+
+        const center_x = p_x/2;
+        const center_y = p_x/2;
+
         const nextState = { ..._nextState };
         const parentX = (value) => { return value * p_x; };
         const parentY = (value) => { return value * p_y; };
@@ -153,12 +164,19 @@ export default class CSS extends godot.Panel {
             "min-width":  () => { const val = Val("min-width"); if (cs.width < val) { cs.width = val; cs.right = cs.margin_left+cs.width; } },
             "max-height": () => { const val = Val("max-height"); if (cs.height > val) { cs.height = val; cs.margin_bottom = cs.margin_top+cs.height; } },
             "min-height": () => { const val = Val("min-height"); if (cs.height < val) { cs.height = val; cs.margin_bottom = cs.margin_top+cs.height; } },
-            "translate.transform": () => {
-                const val = nextState.translate;
+            "transform.translate": () => {
+                const val = nextState["transform.translate"];
                 cs.anchor_left = cs.anchor_right  = (cs.width*val.x) /p_x;
                 cs.anchor_top  = cs.anchor_bottom = (cs.height*val.y)/p_y;
             },
+            "transform.scale": () => {
+                const val = nextState["transform.scale"];
+                cs.rect_scale = new godot.Vector2(val.x, val.y);
+            },
         }
+
+        // Rewrites on transform-origin
+        cs.rect_pivot_offset = new godot.Vector2(cs.width/2, cs.height/2);
 
         Object.keys(applyValues).forEach((prop) => {
             if (nextState[ prop ]) { applyValues[prop](); }
@@ -169,15 +187,21 @@ export default class CSS extends godot.Panel {
 
 
     applyCurrentState(nextState, name) {
-        [
+        [ // Values
             "margin_left", "margin_right", "margin_top", "margin_bottom",
             "anchor_left", "anchor_right", "anchor_top", "anchor_bottom",
         ].forEach((prop) => {
             const nextProp = nextState[prop] || 0;
             // Don't redraw same props - Applies to animation diff
-            if (this[ prop ] !== nextProp) {
-                this[ prop ] = nextProp;
-            }
+            if (this[ prop ] !== nextProp) { this[ prop ] = nextProp; }
+        });
+
+        [ // Axis x, y
+            "rect_scale",
+        ].forEach((prop) => {
+            const nextProp = nextState[prop] || 0;
+            // Don't redraw same props - Applies to animation diff
+            if (this[ prop ].x !== nextProp.x || this[ prop ].y !== nextProp.y) { this[ prop ] = nextProp; }
         });
 
         this.currentState  = nextState;
@@ -190,11 +214,10 @@ export default class CSS extends godot.Panel {
         const rules = CSStringToObject(_css);
         if (!rules.element || !rules.element.states._default) return;
         this.states = rules.element.states;
-
-        // Props that will change depending on height or size
         const inheritFromDefault = [ "transform.translate" ];
         const otherStates = Object.keys(this.states).filter(e => e !== "_default");
         if (this.states._default && otherStates.length > 0) {
+            this.states._default = { ...this.initialState, ...this.states._default };
             inheritFromDefault.forEach((prop) => {
                 if (this.states._default[prop]) {
                     otherStates.forEach((state) => {

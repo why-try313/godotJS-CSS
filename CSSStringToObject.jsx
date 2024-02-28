@@ -27,7 +27,7 @@ const valueValidation = {
 
     percentsAxis: (_str) => {
         let hasErrors = false;
-        const axis = _str.trim().split(" ").map(e => e.trim()).map((value) => {
+        const axis = _str.trim().split(",").map(e => e.trim()).map((value) => {
             if (value.match(rex.percent)) { return parseFloat(value)/100; }
             hasErrors = true; return undefined;
         }).filter(e => typeof e === "number");
@@ -52,7 +52,8 @@ const isValidCSSValue = (value, prop, vars) => {
         "top":    pxOrPercent,     "bottom": pxOrPercent,
         "max-width": pxOrPercent,  "min-width": pxOrPercent,
         "max-height": pxOrPercent, "min-height": pxOrPercent,
-        "translate.transform": percentsAxis,
+        "transform.translate": percentsAxis,
+        "transform.scale": percentsAxis,
         // background-color
         // box-shadow      -- separator = space
         // border          -- separator = space
@@ -88,7 +89,7 @@ const extractFunction = (str, separator) => {
 const areAllowedFunctions = (extractFunctionValues, functionsAllowedArray) => {
     let hasErrors = false;
     extractFunctionValues.forEach((fnAndValue) => {
-        if (fn[0].indexOf(functionsAllowedArray) < 0) {
+        if (functionsAllowedArray.indexOf(fnAndValue[0]) < 0) {
             hasErrors = true;
         }
     });
@@ -111,11 +112,12 @@ const turnPropIntoSubproperties = {
     },
     "transform": (value) => {
         const functions = extractFunction(value, " ");
-        // propX and propY are disable as it would result on a lot of more code
         const allowed = [ "translate", "rotate", "scale" ];
-        if (functions && functions.length > 0 && areAllowedFunctions(functions, allowed)) {
+        const isAllowed = areAllowedFunctions(functions, allowed);
+        // propX and propY are disable as it would result on a lot of more code
+        if (functions && functions.length > 0 && isAllowed) {
             return functions.map((fnAndValue) => {
-                fnAndValue[0] = [ "backdrop-filter", fnAndValue[0] ].join(".");
+                fnAndValue[0] = [ "transform", fnAndValue[0] ].join(".");
                 return fnAndValue;
             });
         }
@@ -138,11 +140,34 @@ const CSStringToObject = (str) => {
             vars[ dec.property ] = dec.value;
         });
 
-
+        const tmpDeclaration = {}; // created for turnPropIntoSubproperties
         rule.declarations.forEach((declaration) => {
             if (declaration.value && declaration.property) {
-                const isValidValue = isValidCSSValue(declaration.value, declaration.property, vars);
-                if (isValidValue) { declarations[ declaration.property ] = isValidValue; }
+                tmpDeclaration[ declaration.property ] = declaration.value;
+            }
+        });
+
+
+        Object.keys(turnPropIntoSubproperties).forEach((key) => {
+            if (tmpDeclaration[ key ]) {
+                const translates = turnPropIntoSubproperties[key](tmpDeclaration[ key ]);
+                if (translates) {
+                    translates.forEach((translation) => {
+                        tmpDeclaration[ translation[0] ] = translation[1];
+                    });
+                } else {
+                    /* error on declaration */
+                }
+                delete tmpDeclaration[ key ];
+            }
+        });
+
+
+        Object.keys(tmpDeclaration).forEach((property) => {
+            const value = tmpDeclaration[ property ];
+            if (value) {
+                const isValidValue = isValidCSSValue(value, property, vars);
+                if (isValidValue) { declarations[ property ] = isValidValue; }
             }
         });
 
