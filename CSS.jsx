@@ -24,6 +24,9 @@ const _css = `
         transform: scale(0.98, 0.98);
         backdrop-filter: blur(8px);
     }
+    @media screen and (max-width: 600px) {
+        element: { color: #f5f5f5; }
+    }
 `;
 
 export default class CSS extends godot.Panel {
@@ -40,7 +43,16 @@ export default class CSS extends godot.Panel {
         "transform.scale": { x: 1, y: 1 },
         "transform.translate": { x: 0, y: 0 },
         "transform-origin": { x: 0.5, y: 0.5 },
-        material: {}, style: {},
+        style: {},
+        material: {},
+        media: {
+            // Toggle avoid unnecessary comparaison
+            hasDeclaration: false,
+            // _max and _min key for quick size comparaison
+            max_width: [], min_width: [], max_height: [], min_height: [],
+            // actual declarations
+            _max_width: {}, _min_width: {}, _max_height: {}, _min_height: {},
+        }
     };
     #states = {};
     #parent = null;
@@ -50,7 +62,7 @@ export default class CSS extends godot.Panel {
     #style = null;
     #material = null;
 
-    #minSecDelay = 0.1;
+    #minSecDelay = 0.05;
     #pendingRender = false;
     #timeLastRender = 0;
 
@@ -78,9 +90,10 @@ export default class CSS extends godot.Panel {
 
 
     #onInit() {
-        this.#currentState = { ...this.#initialState };
-
         const style = new godot.StyleBoxFlat();
+
+        this.#currentState = JSON.parse(JSON.stringify({ ...this.#initialState }));
+
         this.#style = style.duplicate();
         this.#style.bg_color = new godot.Color(0,1,0,0);
         this.set('custom_styles/panel', this.#style);
@@ -93,13 +106,9 @@ export default class CSS extends godot.Panel {
             boxShadow: { x: 0, y: 4, size: 8, color: [ 0.0, 0.0, 0.0, 0.2 ] },
             backgroundColor: [ 0.956863, 0.658824, 0.392157, 0.25098 ],
             "transform.translate": { x: 0, y: 0 },
-            "backdrop-filter.blur": 5,
         };
-        // this.#material.set("shader_param/blur_amount", testState[ "backdrop-filter.blur" ]/2);
+
         this.#material.set("shader_param/set_color", new godot.Color(...testState.backgroundColor));
-        [ "top_left", "top_right", "bottom_right", "bottom_left" ].forEach((param) => {
-            this.#style[ "corner_radius_" + param ] = 20;
-        });
 
         [ "left", "right", "top", "bottom" ].forEach((param) => {
             this.#style[ "border_width_" + param ] = testState.border[ param ];
@@ -135,7 +144,8 @@ export default class CSS extends godot.Panel {
 
 
     afterReady() {
-        // Set pass on each children
+        // Set pass on each children to avoid losing
+        // hover/active/focus on children mouse events
         const passFilter = MOUSE_FILTER.PASS;
         this.mouse_filter = passFilter;
 
@@ -173,7 +183,6 @@ export default class CSS extends godot.Panel {
                 }
             });
         }
-        // log(this.#states._default, null, 4);
         this.#setState();
     }
 
@@ -315,6 +324,8 @@ export default class CSS extends godot.Panel {
         }
         // Soft reload on window resize as the user shouldn't change the window
         // size for fun, yet the window shouldn't re-run calculation every pixel resized 
+        // Reducing this is up to you but is not recommended as they delay won't be applied
+        // it transitions, as long as the size stays the same the style is applied only once
         if (this.#pendingRender && this.#timeLastRender > this.#minSecDelay) {
             this.#reloadState();
             this.#timeLastRender = 0;

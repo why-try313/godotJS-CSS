@@ -158,14 +158,8 @@ const turnPropIntoSubproperties = {
     },
 };
 
-
-const CSStringToObject = (str) => {
-    const css = Parser(str);
-    if (!css || !css.stylesheet || !css.stylesheet.rules) return;
-    let rules = css.stylesheet.rules.filter(rule => rule.type === "rule");
-    if (rules.length === 0) return;
-
-    rules = rules.map((rule) => {
+const extractRules = (rulesArray) => {
+    return rulesArray.map((rule) => {
         const declarations = {};
         const vars = {};
         rule.declarations.filter((dec) => dec.property && dec.property.slice(0,2) === "--").forEach((dec) => {
@@ -225,11 +219,29 @@ const CSStringToObject = (str) => {
             selectors: rule.selectors,
             declarations: rule.declarations
         };
-    });
+    }).filter(Boolean);
+};
+
+const CSStringToObject = (str) => {
+    const css = Parser(str);
+    if (!css || !css.stylesheet || !css.stylesheet.rules) return;
+
+    const allRules  = css.stylesheet.rules.filter(rule => rule.type === "rule" && rule.declarations && rule.declarations.length > 0);
+    const allMedias = css.stylesheet.rules.filter(rule => rule.type === "media" && rule.rules && rule.rules.length > 0);
+    if (allRules.length === 0) return;
 
     const classes = {};
-    const defaultState = { material: {}, style: {} };
-    rules.forEach((rule) => {
+    const defaultState = {
+        material: {},
+        style: {},
+        media: {
+            hasDeclaration: false,
+            max_width: [], min_width: [], max_height: [], min_height: [],
+            _max_width: {}, _min_width: {}, _max_height: {}, _min_height: {},
+        }
+    };
+
+    extractRules(allRules).forEach((rule) => {
         rule.selectors.map((select) => {
             return select.split(":");
         }).forEach((select) => {
@@ -244,6 +256,21 @@ const CSStringToObject = (str) => {
             };
         });
     });
+
+    // media max-width X only applies if screen is LESS than X
+    // media min-width X only applies if screen is MORE than X
+    const medias = allMedias.map((rule) => {
+        console.log(rule.media);
+        const hasLimit = rule.media && rule.media.match(/[a-z]+[\ ]+and[\ ]+\((min|max)-(width|height)[\ ]*:[\ ]*([0-9]+px);?\)$/);
+        if (hasLimit && hasLimit[1] && hasLimit[2] && hasLimit[3]) {
+            console.log(`Limit: ${ hasLimit[1] }_${ hasLimit[2] } : ${ hasLimit[3] }`);
+        }
+    }).filter(Boolean);
+
+    if (medias.length > 0) {
+        //
+    }
+
 
     return classes;
 };
