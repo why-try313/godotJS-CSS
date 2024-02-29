@@ -255,7 +255,7 @@ export default class CSS extends godot.Panel {
 
     #applyCurrentState(nextState, name) {
         const current=  this.#currentState;
-        const meothod = {
+        const methods = {
             // State objects reflect this private values
             // eg; nextState.style.prop = this.#style.prop
             material: this.#material,
@@ -272,7 +272,7 @@ export default class CSS extends godot.Panel {
 
             const source  = sourceName ? nextState[ sourceName ] : nextState;
             const kurrent = sourceName ? current[ sourceName ]   : current;
-            const applyTo = sourceName ? meothod[ sourceName ]   : this;
+            const applyTo = sourceName ? methods[ sourceName ]   : this;
 
             allProps.forEach((prop) => {
                 if (typeof source[prop] === "undefined") return;
@@ -293,7 +293,7 @@ export default class CSS extends godot.Panel {
 
             const source  = sourceName ? nextState[ sourceName ] : nextState;
             const kurrent = sourceName ? current[ sourceName ]   : current;
-            const applyTo = sourceName ? meothod[ sourceName ]   : this;
+            const applyTo = sourceName ? methods[ sourceName ]   : this;
 
             allProps.forEach((prop) => {
                 if (typeof source[prop] === "undefined") return;
@@ -313,6 +313,8 @@ export default class CSS extends godot.Panel {
         if (this.#timeLastRender < this.#minSecDelay+1) {
             this.#timeLastRender = this.#timeLastRender + delta;
         }
+        // Soft reload on window resize as the user shouldn't change the window
+        // size for fun, yet the window shouldn't re-run calculation every pixel resized 
         if (this.#pendingRender && this.#timeLastRender > this.#minSecDelay) {
             this.#reloadState();
             this.#timeLastRender = 0;
