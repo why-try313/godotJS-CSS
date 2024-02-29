@@ -3,6 +3,7 @@ import Parser from "res://addons/div/css/Utils/CSS_Parser.js"
 const rex = {
     px: /^-?[0-9]+(\.[0-9]+)?px$/,
     var: /^var\(--[a-zA-Z]+\)$/,
+    float: /^-?[0-9]+(\.[0-9]+)?$/,
     number: /^-?[0-9]+(\.[0-9])?$/,
     percent: /^-?[0-9]+(\.[0-9]+)?%$/,
     pxOrPercent: /^-?[0-9]+(\.[0-9]+)?(px|%)?$/,
@@ -25,56 +26,41 @@ const valueValidation = {
         else if (value.indexOf("%") > -1) { return { v: parseFloat(value)/100, p: true }; }
     },
 
-    percentsAxis: (_str) => {
+    getAxis(_str, type, separator = ",", setAxis = ["x", "y"]) {
         let hasErrors = false;
-        const axis = _str.trim().split(",").map(e => e.trim()).map((value) => {
-            if (value.match(rex.percent)) { return parseFloat(value)/100; }
+        const splitValues = _str.trim().split(separator).map(e => e.trim());
+        const axis = splitValues.map((value) => {
+            if (value.match(rex[ type ])) {
+                const result = parseFloat(value)/(type === "percent" ? 100 : 1);
+                if (type === "pxOrPercent") {
+                    return { v: result, p: value.indexOf('%') > -1 };
+                }
+                return result;
+            }
             hasErrors = true; return undefined;
-        }).filter(e => typeof e === "number");
+        }).filter(e => {
+            return (typeof e === "number") || (typeof e === "object" && typeof e.v === "number");
+        });
+
         if (hasErrors) return undefined;
-        if (axis.length < 1 || axis.length > 2) return undefined;
-        if (axis.length === 1) return { x: axis[0], y: axis[0] };
-        if (axis.length === 2) return { x: axis[0], y: axis[1] };
+        if (axis.length < 1 || axis.length > setAxis.length) return undefined;
+        const maxLen = axis.length;
+        const result = {};
+        if (maxLen === 2 && setAxis.length === 4) {
+            [ setAxis.slice(0, 2), setAxis.slice(2, 4) ].forEach((group, index) => { group.forEach((_axis) => { result[ _axis ] = axis[ index ]; }); });
+        } else {
+            setAxis.forEach((_axis, index) => { result[ _axis ] = axis[ index > maxLen-1 ? index : maxLen-1 ]; });
+        }
+        return result;
     },
+
+    percentsAxis:    (_str) => valueValidation.getAxis(_str, "percent"),
+    floatAxis:       (_str) => valueValidation.getAxis(_str, "float"),
+    directionsAxis:  (_str) => valueValidation.getAxis(_str, "pxOrPercent", /[\ ]{1,}/g, [ "top_left","bottom_right","top_right","bottom_left" ]),
 };
 
 
-const isValidCSSValue = (value, prop, vars) => {
-    if (value.match(rex.var)) {
-        value = vars[ value.replace(/^var\(/, "").replace(/\)$/, "").trim() ];
-    }
-
-    const { px, percent, pxOrPercent, percentsAxis } = valueValidation;
-
-    const transforms = {
-        "width":  pxOrPercent,     "height": pxOrPercent,
-        "left":   pxOrPercent,     "right":  pxOrPercent,
-        "top":    pxOrPercent,     "bottom": pxOrPercent,
-        "max-width": pxOrPercent,  "min-width": pxOrPercent,
-        "max-height": pxOrPercent, "min-height": pxOrPercent,
-        "transform.translate": percentsAxis,
-        "transform.scale": percentsAxis,
-        // background-color
-        // box-shadow      -- separator = space
-        // border          -- separator = space
-        // backdrop-filter -- separator = space
-        // transform       -- separator = space
-    };
-
-    if (!transforms[prop]) { return false; }
-    return transforms[prop](value);
-};
-
-
-// To avoid declarations conflicts
-const conflictsDeclarations = [
-    //       check if has all props     = removed prop
-    { has: [ "width", "left", "right"  ], remove: [ "right" ] },
-    { has: [ "height", "top", "bottom" ], remove: [ "bottom" ] },
-];
-
-
-// extracts values like: 'translate() scale()' into [ [functionName, value]* ];
+// extracts values like: 'transform: translate(val) scale(val)' into [ [functionName, value], * ];
 const extractFunction = (str, separator) => {
     const rex = new RegExp("[a-z-]+\\\([^\)]+\\\)[\ ]*"+separator+"[\ ]*", "ig");
     const fns = (str+separator).match(rex);
@@ -86,6 +72,7 @@ const extractFunction = (str, separator) => {
     });
 };
 
+// Checks if extractFunction values function is in allowed array
 const areAllowedFunctions = (extractFunctionValues, functionsAllowedArray) => {
     let hasErrors = false;
     extractFunctionValues.forEach((fnAndValue) => {
@@ -94,13 +81,58 @@ const areAllowedFunctions = (extractFunctionValues, functionsAllowedArray) => {
         }
     });
     return !hasErrors;
-}
+};
+
+
+
+// To avoid declarations conflicts
+const conflictsDeclarations = [
+    //       check if has all props     = removed prop
+    { has: [ "width", "left", "right"  ], remove: [ "right" ] },
+    { has: [ "height", "top", "bottom" ], remove: [ "bottom" ] },
+];
+
+
+const isValidCSSValue = (value, prop, vars) => {
+    if (value.match(rex.var)) {
+        value = vars[ value.replace(/^var\(/, "").replace(/\)$/, "").trim() ];
+    }
+
+    const {
+        px, percent, pxOrPercent,
+        percentsAxis, floatAxis, directionsAxis
+    } = valueValidation;
+
+    const transforms = {
+        "width":  pxOrPercent,     "height": pxOrPercent,
+        "left":   pxOrPercent,     "right":  pxOrPercent,
+        "top":    pxOrPercent,     "bottom": pxOrPercent,
+        "max-width": pxOrPercent,  "min-width": pxOrPercent,
+        "max-height": pxOrPercent, "min-height": pxOrPercent,
+        // transform       -- separator = space
+        "transform.translate": percentsAxis,
+        "transform.scale": floatAxis,
+        "transform-origin": percentsAxis,
+        // backdrop-filter -- separator = space
+        "backdrop-filter.blur": px,
+        "border-radius": directionsAxis,
+        // background-color
+        // box-shadow      -- separator = space
+        // border          -- separator = space
+    };
+
+    if (!transforms[prop]) { return false; }
+    return transforms[prop](value);
+};
+
 
 const turnPropIntoSubproperties = {
     "backdrop-filter": (value) => {
         const functions = extractFunction(value, " ");
-        const allowed = [ "blur","brightness","contrast","drop-shadow",
-        "grayscale","hue-rotate","invert","opacity","sepia","saturate" ];
+        const allowed = [
+            "blur","brightness","contrast","drop-shadow",
+            "grayscale","hue-rotate","invert","opacity","sepia","saturate"
+        ];
         if (functions && functions.length > 0 && areAllowedFunctions(functions, allowed)) {
             return functions.map((fnAndValue) => {
                 fnAndValue[0] = [ "backdrop-filter", fnAndValue[0] ].join(".");
@@ -182,7 +214,6 @@ const CSStringToObject = (str) => {
             if (!hasConflict) return;
             const errorString    = `Conflict with ${ conflict.has.join(',') }`;
             const propertyErrors = `ignoring ${ conflict.remove.join(', ') } propert${ conflict.remove.length > 1 ? "ies" : "y" }`;
-            console.log(errorString+", "+propertyErrors);
             conflict.remove.forEach((removeProp) => {
                 delete declarations[ removeProp ];
             });
@@ -197,14 +228,7 @@ const CSStringToObject = (str) => {
     });
 
     const classes = {};
-    const defaultState = {
-        // prop   value, percent
-        width:  { v: 20, p: false },
-        height: { v: 20, p: false },
-        top:    { v: 0,  p: false },
-        left:   { v: 0,  p: false }
-    };
-
+    const defaultState = { material: {}, style: {} };
     rules.forEach((rule) => {
         rule.selectors.map((select) => {
             return select.split(":");
@@ -212,7 +236,7 @@ const CSStringToObject = (str) => {
             const className = select[0];
             let state = select[1] || "_default";
             if (!classes[ className ]) { classes[ className ] = { states: { _default: defaultState } }; }
-            if (!classes[ className ].states[ state ]) { classes[ className ].states[ state ] = {}; }
+            if (!classes[ className ].states[ state ]) { classes[ className ].states[ state ] = defaultState; }
 
             classes[ className ].states[ state ] = {
                 ...classes[ className ].states[ state ],
