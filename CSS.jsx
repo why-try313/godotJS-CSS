@@ -32,15 +32,11 @@ export default class CSS extends godot.Panel {
     // eg: self { width: 20px; } self:hover { width: 40px; }
 
     #initialState = {
-        "margin_left":   { v: 0, p: false },
-        "margin_top":    { v: 0, p: false },
-        "anchor_left":   { v: 0, p: false },
-        "anchor_right":  { v: 0, p: false },
-        "anchor_top":    { v: 0, p: false },
-        "anchor_bottom": { v: 0, p: false },
+        "margin_left":   { v: 0, p: false }, "margin_right":  { v: 20, p: false },
+        "margin_top":    { v: 0, p: false }, "margin_bottom": { v: 20, p: false },
+        "anchor_left":   { v: 0, p: false }, "anchor_right":  { v: 0,  p: false },
+        "anchor_top":    { v: 0, p: false }, "anchor_bottom": { v: 0,  p: false },
 
-        "margin_right":  { v: 20, p: false },
-        "margin_bottom": { v: 20, p: false },
         "transform.scale": { x: 1, y: 1 },
         "transform.translate": { x: 0, y: 0 },
         "transform-origin": { x: 0.5, y: 0.5 },
@@ -231,22 +227,18 @@ export default class CSS extends godot.Panel {
             "right":      (p) => { const val = Val(p); cs.width  = p_x-(cs.margin_left + val); cs.margin_right = cs.margin_left+cs.width; },
             "height":     (p) => { const val = Val(p); cs.margin_bottom = cs.margin_top + val; cs.height = val; },
             "bottom":     (p) => { const val = Val(p); cs.height = p_y-(cs.margin_top + val); cs.margin_bottom = cs.margin_top+cs.height; },
+
             "max-width":  (p) => { const val = Val(p); if (cs.width > val)  { cs.margin_right = cs.margin_left + val; cs.width = val; } },
             "min-width":  (p) => { const val = Val(p); if (cs.width < val)  { cs.margin_right = cs.margin_left + val; cs.width = val; } },
             "max-height": (p) => { const val = Val(p); if (cs.height > val) { cs.margin_bottom = cs.margin_top + val; cs.height = val; } },
             "min-height": (p) => { const val = Val(p); if (cs.height < val) { cs.margin_bottom = cs.margin_top + val; cs.height = val; } },
-            "transform.translate": (p) => {
-                const val = nextState[p];
-                cs.anchor_left = cs.anchor_right  = (cs.width*val.x) /p_x;
-                cs.anchor_top  = cs.anchor_bottom = (cs.height*val.y)/p_y;
-            },
-            "transform.scale": (p) => { cs.rect_scale = nextState[p]; },
-            "transform-origin": (p) => {
-                const val = nextState[p];
-                cs.rect_pivot_offset = { x: Math.round(cs.width*val.x), y: Math.round(cs.height*val.y) };
-            },
+
+            "border-radius":        (p) => { Object.keys(nextState[p]).forEach((key) => { cs.style[ "corner_radius_"+key ] = nextState[p][key].v; }); },
+
+            "transform.scale":      (p) => { cs.rect_scale = nextState[p]; },
+            "transform.translate":  (p) => { const val = nextState[p]; cs.anchor_left = cs.anchor_right  = (cs.width*val.x) /p_x; cs.anchor_top  = cs.anchor_bottom = (cs.height*val.y)/p_y; },
+            "transform-origin":     (p) => { const val = nextState[p]; cs.rect_pivot_offset = { x: Math.round(cs.width*val.x), y: Math.round(cs.height*val.y) }; },
             "backdrop-filter.blur": (p) => { cs.material[ "shader_param/blur_amount" ] = parseFloat(Val(p)/2); },
-            "border-radius": (p) => { Object.keys(nextState[p]).forEach((key) => { cs.style[ "corner_radius_"+key ] = nextState[p][key].v; }); },
         };
 
         Object.keys(applyValues).forEach((prop) => {
@@ -259,8 +251,14 @@ export default class CSS extends godot.Panel {
 
     #applyCurrentState(nextState, name) {
         const current=  this.#currentState;
-        const sources = { material: this.#material, style: this.#style };
-        [ // Values
+        const meothod = {
+            // State objects reflect this private values
+            // eg; nextState.style.prop = this.#style.prop
+            material: this.#material,
+            style: this.#style
+        };
+
+        [// Sourcs        Props to be applied
             [ null,       [ "margin_left", "margin_right", "margin_top", "margin_bottom", "anchor_left", "anchor_right", "anchor_top", "anchor_bottom" ]],
             [ "material", [ "shader_param/blur_amount" ]],
             [ "style",    [ "corner_radius_top_left", "corner_radius_top_right", "corner_radius_bottom_left", "corner_radius_bottom_right", ]],
@@ -269,8 +267,8 @@ export default class CSS extends godot.Panel {
             const allProps   = def[1];
 
             const source  = sourceName ? nextState[ sourceName ] : nextState;
-            const applyTo = sourceName ? sources[ sourceName ]   : this;
             const kurrent = sourceName ? current[ sourceName ]   : current;
+            const applyTo = sourceName ? meothod[ sourceName ]   : this;
 
             allProps.forEach((prop) => {
                 if (typeof source[prop] === "undefined") return;
@@ -283,17 +281,26 @@ export default class CSS extends godot.Panel {
             });
         });
 
-        [ // Axis x, y
-            "rect_scale",
-            "rect_pivot_offset",
-        ].forEach((prop) => {
-            if (typeof nextState[prop] === "undefined") return;
-            const nextValue = nextState[prop] || { x: 0, y: 0 };
-            if (!current[ prop ] || current[ prop ].x !== nextValue.x || current[ prop ].y !== nextValue.y) {
-                this[ prop ] = new godot.Vector2(nextValue.x, nextValue.y);
-            }
+        [// Source  Axis        Axis for type    Props to be applied
+            [ null, ['x', 'y'], godot.Vector2, [ "rect_scale", "rect_pivot_offset" ] ],
+        ].forEach((def) => {
+            const sourceName = def[0];  const axes       = def[1];
+            const format     = def[2];  const allProps   = def[3];
+
+            const source  = sourceName ? nextState[ sourceName ] : nextState;
+            const kurrent = sourceName ? current[ sourceName ]   : current;
+            const applyTo = sourceName ? meothod[ sourceName ]   : this;
+
+            allProps.forEach((prop) => {
+                if (typeof source[prop] === "undefined") return;
+                const nextValue = source[ prop ];
+                // Don't redraw same props - Applies to animation diff
+                if (!kurrent[ prop ] || kurrent[ prop ] !== nextValue) {
+                    applyTo[ prop ] = new format(...axes.map((axis) => nextValue[axis]));
+                }
+            });
         });
-        // this.#material.set("shader_param/blur_amount", 4);
+
         this.#currentState  = nextState;
         this.#currentStateName  = name;
     }
