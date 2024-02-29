@@ -1,6 +1,6 @@
 shader_type canvas_item;
 
-uniform float blur_amount: hint_range(0.0, 5.0);
+uniform float blur_amount: hint_range(0.0, 20.0);
 uniform vec4 set_color : hint_color;
 uniform vec4 chroma_color : hint_color;
 
