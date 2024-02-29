@@ -54,12 +54,28 @@ export default class CSS extends godot.Panel {
     #style = null;
     #material = null;
 
+    #id = "";
+    #classes = [];
+
     constructor() {
         super();
-        // this.classes = [];
+        // this.classes = []; // To inherit 
+        this.classList = {
+            contains: (cls)      => this.#classes.indexOf(cls) > -1, 
+            add:      (newcls)   => { this.#classes = Array.from(new Set([ ...this.#classes, newcls ])); this.#buildClasses(); }, 
+            remove:   (newcls)   => { this.#classes = this.#classes.filter(cls => cls !== newcls); this.#buildClasses(); },
+            toggle:   (cls)      => { this.classList[ this.classList.contains(cls) ? "remove" : "add" ](cls); },
+            replace:  (old, add) => { this.#classes = Array.from(new Set(this.#classes.map(cls => cls === old ? add : cls))); this.#buildClasses(); },
+        };
     }
 
-    // get className() { return this.classes.join(' '); } set className(value) { this.classes = value.split(/[\ ]+/g); this.buildClasses(); }
+    // get id() { return this.#id; } set id(value) { this.#id = value; this.#buildClasses(); }
+    // get className() { return this.#classes.join(' '); } set className(value) { this.#classes = value.split(/[\ ]+/g); this.#buildClasses(); }
+    #buildClasses() {
+        // Get all classes and ID from repository to merge to the current element
+        // current element is merge last as inline/editor declarations have priority to crush old ones
+    }
+
 
     #onInit() {
         this.#currentState = { ...this.#initialState };
@@ -209,12 +225,12 @@ export default class CSS extends godot.Panel {
 
         const applyValues = {
         //  this    <----- p stands for prop, aka this (see arrow to left)
-            left:         (p) => { cs.margin_left   = Val(p); },
-            top:          (p) => { cs.margin_top    = Val(p); },
-            width:        (p) => { const val = Val(p); cs.margin_right  = cs.margin_left + val; cs.width = val; },
-            right:        (p) => { const val = Val(p); cs.width  = p_x-(cs.margin_left + val); cs.margin_right = cs.margin_left+cs.width; },
-            height:       (p) => { const val = Val(p); cs.margin_bottom = cs.margin_top + val; cs.height = val; },
-            bottom:       (p) => { const val = Val(p); cs.height = p_y-(cs.margin_top + val); cs.margin_bottom = cs.margin_top+cs.height; },
+            "left":       (p) => { cs.margin_left   = Val(p); },
+            "top":        (p) => { cs.margin_top    = Val(p); },
+            "width":      (p) => { const val = Val(p); cs.margin_right  = cs.margin_left + val; cs.width = val; },
+            "right":      (p) => { const val = Val(p); cs.width  = p_x-(cs.margin_left + val); cs.margin_right = cs.margin_left+cs.width; },
+            "height":     (p) => { const val = Val(p); cs.margin_bottom = cs.margin_top + val; cs.height = val; },
+            "bottom":     (p) => { const val = Val(p); cs.height = p_y-(cs.margin_top + val); cs.margin_bottom = cs.margin_top+cs.height; },
             "max-width":  (p) => { const val = Val(p); if (cs.width > val)  { cs.margin_right = cs.margin_left + val; cs.width = val; } },
             "min-width":  (p) => { const val = Val(p); if (cs.width < val)  { cs.margin_right = cs.margin_left + val; cs.width = val; } },
             "max-height": (p) => { const val = Val(p); if (cs.height > val) { cs.margin_bottom = cs.margin_top + val; cs.height = val; } },
