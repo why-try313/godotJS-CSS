@@ -50,6 +50,10 @@ export default class CSS extends godot.Panel {
     #style = null;
     #material = null;
 
+    #minSecDelay = 0.1;
+    #pendingRender = false;
+    #timeLastRender = 0;
+
     #id = "";
     #classes = [];
 
@@ -110,7 +114,7 @@ export default class CSS extends godot.Panel {
         this.#onInit();
         this.afterReady = this.afterReady.bind(this);
         if (this.get_parent() && this.get_parent().has_signal("resized") && !this.get_parent().css) {
-            this.get_parent().connect("resized", () => { this.#reloadState(); });
+            this.get_parent().connect("resized", () => { this.#pendingRender = true; });
         }
 
         // hover
@@ -303,6 +307,17 @@ export default class CSS extends godot.Panel {
 
         this.#currentState  = nextState;
         this.#currentStateName  = name;
+    }
+
+    _process(delta) {
+        if (this.#timeLastRender < this.#minSecDelay+1) {
+            this.#timeLastRender = this.#timeLastRender + delta;
+        }
+        if (this.#pendingRender && this.#timeLastRender > this.#minSecDelay) {
+            this.#reloadState();
+            this.#timeLastRender = 0;
+            this.#pendingRender = false;
+        }
     }
 
 }
