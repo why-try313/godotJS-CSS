@@ -1,5 +1,6 @@
-import CSStringToObject from "./CSSStringToObject.jsx";
+import CSStringToObject from "./Utils/CSSStringToObject.jsx";
 import { MOUSE_FILTER, } from "res://addons/div/css/Utils/CSS_Utils.js";
+import { INITIAL_STATE }  from "./Utils/CSS_Constants.jsx";
 import ShaderMat from "./CSS_material.tres";
 import Shader from "./CSS_shader.gdshader";
 
@@ -36,24 +37,7 @@ export default class CSS extends godot.Panel {
     #selfCSSname = "self";
     // eg: self { width: 20px; } self:hover { width: 40px; }
 
-    #initialState = {
-        "margin_left":   { v: 0, p: false }, "margin_right":  { v: 20, p: false },
-        "margin_top":    { v: 0, p: false }, "margin_bottom": { v: 20, p: false },
-        "anchor_left":   { v: 0, p: false }, "anchor_right":  { v: 0,  p: false },
-        "anchor_top":    { v: 0, p: false }, "anchor_bottom": { v: 0,  p: false },
-
-        "transform.scale":     { x: 1, y: 1 },
-        "transform.translate": { x: 0, y: 0 },
-        "transform-origin":    { x: 0.5, y: 0.5 },
-        style: {},
-        material: {},
-        media: null, /* {
-s            // _max and _min key for quick size comparaison
-            max_width: [], min_width: [], max_height: [], min_height: [],
-            // actual declarations
-            _max_width: {}, _min_width: {}, _max_height: {}, _min_height: {},
-        } */
-    };
+    #initialState = INITIAL_STATE;
     #states = {};
     #parent = null;
     #currentState = {};
@@ -69,6 +53,7 @@ s            // _max and _min key for quick size comparaison
     #id = "";
     #classes = [];
     #ready = false;
+    #inline_css = "";
 
     constructor() {
         super();
@@ -99,9 +84,11 @@ s            // _max and _min key for quick size comparaison
     }
 
 
-    #onInit() {
-        this.#currentState = JSON.parse(JSON.stringify({ ...this.#initialState }));
+    get inline_CSS() { return this.#inline_css; }
+    set inline_CSS(value) { this.#inline_css = value; this.#loadCSS(); }
 
+
+    #onInit() {
         const testState = {
             border: { top: 4, bottom: 4, left: 4, right: 4, color: [1,1,1,0.5] },
             boxShadow: { x: 0, y: 4, size: 8, color: [ 0.0, 0.0, 0.0, 0.2 ] },
@@ -165,19 +152,23 @@ s            // _max and _min key for quick size comparaison
 
 
     #loadCSS() {
-        const rules = CSStringToObject(_css);
+        const rules = CSStringToObject(this.#inline_css);
         const name  = this.#selfCSSname;
         if (!rules || !rules[ name ] || !rules[ name ].states._default) return;
 
         this.#states = rules[ name ].states;
-        const inheritFromDefault = [ "transform.translate" ];
+        this.#currentState = JSON.parse(JSON.stringify({ ...this.#initialState }));
+        this.#currentStateName = "init";
+        const inheritFromDefault = [ "transform.translate", "background-color" ];
         const otherStates = Object.keys(this.#states).filter(e => e !== "_default");
         if (this.#states._default) {
             this.#states._default = { ...this.#initialState, ...this.#states._default };
             inheritFromDefault.forEach((prop) => {
                 if (this.#states._default[prop]) {
                     otherStates.forEach((state) => {
-                        this.#states[ state ][ prop ] = this.#states._default[prop];
+                        if (typeof this.#states[ state ][ prop ] === "undefined") {
+                            this.#states[ state ][ prop ] = this.#states._default[prop];
+                        }
                     });
                 }
             });
@@ -261,6 +252,7 @@ s            // _max and _min key for quick size comparaison
             "transform.translate":  (p) => { const val = nextState[p]; cs.anchor_left = cs.anchor_right  = (cs.width*val.x) /p_x; cs.anchor_top  = cs.anchor_bottom = (cs.height*val.y)/p_y; },
             "transform-origin":     (p) => { const val = nextState[p]; cs.rect_pivot_offset = { x: Math.round(cs.width*val.x), y: Math.round(cs.height*val.y) }; },
             "backdrop-filter.blur": (p) => { cs.material[ "blur_amount" ] = parseFloat(Val(p) ? Val(p)/2 : 0); },
+            "background-color":     (p) => { cs.material["set_color"] = nextState[p]; },
         };
 
         if (!applyValuesKeys) { applyValuesKeys = Object.keys(applyValues); }
@@ -299,10 +291,7 @@ s            // _max and _min key for quick size comparaison
                 const nextValue = source[ prop ] || 0;
                 // Don't redraw same props - Applies to animation diff
                 if (typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue) {
-                    if (sourceName === "material") {
-                        // applyTo.set(prop, nextValue);
-                        applyTo.set_shader_param(prop, nextValue);
-                    }
+                    if (sourceName === "material") { applyTo.set_shader_param(prop, nextValue); }
                     else { applyTo[ prop ] = nextValue; }
                 }
             });
@@ -310,6 +299,7 @@ s            // _max and _min key for quick size comparaison
 
         [// Source  Axis        Axis for type    Props to be applied
             [ null, ['x', 'y'], godot.Vector2, [ "rect_scale", "rect_pivot_offset" ] ],
+            [ "material", [ 0, 1, 2, 3 ], godot.Color, [ "set_color" ] ],
         ].forEach((def) => {
             const sourceName = def[0];  const axes       = def[1];
             const format     = def[2];  const allProps   = def[3];
@@ -322,12 +312,14 @@ s            // _max and _min key for quick size comparaison
                 if (typeof source[prop] === "undefined") return;
                 const nextValue = source[ prop ];
                 if (typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue) {
-                    applyTo[ prop ] = new format(...axes.map((axis) => nextValue[axis]));
+                    const val = new format(...axes.map((axis) => nextValue[axis]));
+                    if (sourceName === "material") { applyTo.set_shader_param(prop, val); }
+                    else { applyTo[ prop ] = val; }
                 }
             });
         });
 
-        this.#currentState  = nextState;
+        this.#currentState = nextState;
         this.#currentStateName  = name;
     }
 
@@ -349,3 +341,4 @@ s            // _max and _min key for quick size comparaison
 }
 
 godot.set_script_tooled(CSS, true);
+godot.register_property(CSS, "inline_CSS",  { type: String, hint: godot.PROPERTY_HINT_MULTILINE_TEXT, default: "" });
