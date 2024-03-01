@@ -12,7 +12,7 @@ const _css = `
         max-width: 500px;
         height: 200px;
         border-radius: 7px 7px;
-        backdrop-filter: blur(8px);
+        backdrop-filter: blur(12px);
         transform: translate(-50%, -50%) scale(1,1);
     }
     self:hover {
@@ -25,9 +25,11 @@ const _css = `
         backdrop-filter: blur(8px);
     }
     @media screen and (max-width: 600px) {
-        element: { color: #f5f5f5; }
+        self { backdrop-filter: blur(0px); width: 200px; }
     }
 `;
+
+let applyValuesKeys = null;
 
 export default class CSS extends godot.Panel {
     // The name of the element on CSS to reference itself
@@ -40,19 +42,17 @@ export default class CSS extends godot.Panel {
         "anchor_left":   { v: 0, p: false }, "anchor_right":  { v: 0,  p: false },
         "anchor_top":    { v: 0, p: false }, "anchor_bottom": { v: 0,  p: false },
 
-        "transform.scale": { x: 1, y: 1 },
+        "transform.scale":     { x: 1, y: 1 },
         "transform.translate": { x: 0, y: 0 },
-        "transform-origin": { x: 0.5, y: 0.5 },
+        "transform-origin":    { x: 0.5, y: 0.5 },
         style: {},
         material: {},
-        media: {
-            // Toggle avoid unnecessary comparaison
-            hasDeclaration: false,
-            // _max and _min key for quick size comparaison
+        media: null, /* {
+s            // _max and _min key for quick size comparaison
             max_width: [], min_width: [], max_height: [], min_height: [],
             // actual declarations
             _max_width: {}, _min_width: {}, _max_height: {}, _min_height: {},
-        }
+        } */
     };
     #states = {};
     #parent = null;
@@ -60,14 +60,15 @@ export default class CSS extends godot.Panel {
     #currentStateName = "init";
     #mouseEvent = { hover: false, focus: false, active: false };
     #style = null;
-    #material = null;
+    /*!*\ #material = null; // Somehow not working if it's private (??) */
 
-    #minSecDelay = 0.05;
+    #minSecDelay = 0.1;
     #pendingRender = false;
     #timeLastRender = 0;
 
     #id = "";
     #classes = [];
+    #ready = false;
 
     constructor() {
         super();
@@ -79,6 +80,15 @@ export default class CSS extends godot.Panel {
             toggle:   (cls)      => { this.classList[ this.classList.contains(cls) ? "remove" : "add" ](cls); },
             replace:  (old, add) => { this.#classes = Array.from(new Set(this.#classes.map(cls => cls === old ? add : cls))); this.#buildClasses(); },
         };
+
+        const style = new godot.StyleBoxFlat();
+        this.#style = style.duplicate();
+        this.#style.bg_color = new godot.Color(0,1,0,0);
+        this.set('custom_styles/panel', this.#style);
+
+        this.material = ShaderMat.duplicate();
+        this.material.shader = Shader.duplicate();
+        this.material.set("shader_param/set_color", new godot.Color(...testState.backgroundColor));
     }
 
     // get id() { return this.#id; } set id(value) { this.#id = value; this.#buildClasses(); }
@@ -90,16 +100,7 @@ export default class CSS extends godot.Panel {
 
 
     #onInit() {
-        const style = new godot.StyleBoxFlat();
-
         this.#currentState = JSON.parse(JSON.stringify({ ...this.#initialState }));
-
-        this.#style = style.duplicate();
-        this.#style.bg_color = new godot.Color(0,1,0,0);
-        this.set('custom_styles/panel', this.#style);
-
-        this.#material = ShaderMat.duplicate();
-        this.#material.shader = Shader.duplicate();
 
         const testState = {
             border: { top: 4, bottom: 4, left: 4, right: 4, color: [1,1,1,0.5] },
@@ -107,8 +108,6 @@ export default class CSS extends godot.Panel {
             backgroundColor: [ 0.956863, 0.658824, 0.392157, 0.25098 ],
             "transform.translate": { x: 0, y: 0 },
         };
-
-        this.#material.set("shader_param/set_color", new godot.Color(...testState.backgroundColor));
 
         [ "left", "right", "top", "bottom" ].forEach((param) => {
             this.#style[ "border_width_" + param ] = testState.border[ param ];
@@ -183,15 +182,17 @@ export default class CSS extends godot.Panel {
                 }
             });
         }
+        this.#ready = true;
         this.#setState();
     }
 
 
     #setState(_state = "_default") {
+        if (!this.#ready) return;
         let state = _state;
-        if (this.#mouseEvent.hover && this.#states["hover"])   { state = "hover"; }
-        if (this.#mouseEvent.focus && this.#states["focus"])   { state = "focus"; }
-        if (this.#mouseEvent.focus && this.#states["hover"])   { state = "hover"; }
+        if (this.#mouseEvent.hover  && this.#states["hover"])  { state = "hover";  }
+        if (this.#mouseEvent.focus  && this.#states["focus"])  { state = "focus";  }
+        if (this.#mouseEvent.focus  && this.#states["hover"])  { state = "hover";  }
         if (this.#mouseEvent.active && this.#states["active"]) { state = "active"; }
         if (this.#currentStateName === state) return;
         if (!this.#states[ state ]) return;
@@ -206,19 +207,27 @@ export default class CSS extends godot.Panel {
 
 
     #setNextStateValues(_nextState, name) {
-        const cs = JSON.parse(JSON.stringify({ ...this.#currentState, ...{} }));
+        let nextState = JSON.parse(JSON.stringify(_nextState));
+        const cs = JSON.parse(JSON.stringify(this.#currentState));
         const parent = this.#parent;
         const p_x = parent.rect_size.x;
         const p_y = parent.rect_size.y;
 
-        const center_x = p_x/2;
-        const center_y = p_x/2;
+        // Media Queries
+        if (nextState.media) {
+            const max_width  = nextState.media.max_width.filter(size  => size > p_x);
+            const min_width  = nextState.media.min_width.filter(size  => size < p_x);
+            const max_height = nextState.media.max_height.filter(size => size > p_y);
+            const min_height = nextState.media.min_height.filter(size => size < p_y);
+            if (max_width.length > 0)  { max_width.forEach((size)  => { nextState = { ...nextState, ...nextState.media._max_width[size]  }; }); }
+            if (min_width.length > 0)  { min_width.forEach((size)  => { nextState = { ...nextState, ...nextState.media._min_width[size]  }; }); }
+            if (max_height.length > 0) { max_height.forEach((size) => { nextState = { ...nextState, ...nextState.media._max_height[size] }; }); }
+            if (min_height.length > 0) { min_height.forEach((size) => { nextState = { ...nextState, ...nextState.media._min_height[size] }; }); }
+        }
 
-        const nextState = { ..._nextState };
         const parentX = (value) => { return value * p_x; };
         const parentY = (value) => { return value * p_y; };
-        const elementX = (value) => { return value * cs.width; };
-        const elementY = (value) => { return value * cs.height; };
+
         const parentPercent = {
             width:        parentX, "max-width":  parentX, "min-width":  parentX,
             left:         parentX, right:        parentX,
@@ -251,10 +260,12 @@ export default class CSS extends godot.Panel {
             "transform.scale":      (p) => { cs.rect_scale = nextState[p]; },
             "transform.translate":  (p) => { const val = nextState[p]; cs.anchor_left = cs.anchor_right  = (cs.width*val.x) /p_x; cs.anchor_top  = cs.anchor_bottom = (cs.height*val.y)/p_y; },
             "transform-origin":     (p) => { const val = nextState[p]; cs.rect_pivot_offset = { x: Math.round(cs.width*val.x), y: Math.round(cs.height*val.y) }; },
-            "backdrop-filter.blur": (p) => { cs.material[ "shader_param/blur_amount" ] = parseFloat(Val(p)/2); },
+            "backdrop-filter.blur": (p) => { cs.material[ "blur_amount" ] = parseFloat(Val(p) ? Val(p)/2 : 0); },
         };
 
-        Object.keys(applyValues).forEach((prop) => {
+        if (!applyValuesKeys) { applyValuesKeys = Object.keys(applyValues); }
+
+        applyValuesKeys.forEach((prop) => {
             if (nextState[ prop ]) { applyValues[prop](prop); }
         });
 
@@ -267,13 +278,13 @@ export default class CSS extends godot.Panel {
         const methods = {
             // State objects reflect this private values
             // eg; nextState.style.prop = this.#style.prop
-            material: this.#material,
+            material: this.material,
             style: this.#style
         };
 
         [// Sourcs        Props to be applied
             [ null,       [ "margin_left", "margin_right", "margin_top", "margin_bottom", "anchor_left", "anchor_right", "anchor_top", "anchor_bottom" ]],
-            [ "material", [ "shader_param/blur_amount" ]],
+            [ "material", [ "blur_amount" ]],
             [ "style",    [ "corner_radius_top_left", "corner_radius_top_right", "corner_radius_bottom_left", "corner_radius_bottom_right", ]],
         ].forEach((def) => {
             const sourceName = def[0];
@@ -287,8 +298,11 @@ export default class CSS extends godot.Panel {
                 if (typeof source[prop] === "undefined") return;
                 const nextValue = source[ prop ] || 0;
                 // Don't redraw same props - Applies to animation diff
-                if (!kurrent[ prop ] || kurrent[ prop ] !== nextValue) {
-                    if (sourceName === "material") { applyTo.set(prop, nextValue); }
+                if (typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue) {
+                    if (sourceName === "material") {
+                        // applyTo.set(prop, nextValue);
+                        applyTo.set_shader_param(prop, nextValue);
+                    }
                     else { applyTo[ prop ] = nextValue; }
                 }
             });
@@ -307,8 +321,7 @@ export default class CSS extends godot.Panel {
             allProps.forEach((prop) => {
                 if (typeof source[prop] === "undefined") return;
                 const nextValue = source[ prop ];
-                // Don't redraw same props - Applies to animation diff
-                if (!kurrent[ prop ] || kurrent[ prop ] !== nextValue) {
+                if (typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue) {
                     applyTo[ prop ] = new format(...axes.map((axis) => nextValue[axis]));
                 }
             });

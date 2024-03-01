@@ -234,11 +234,12 @@ const CSStringToObject = (str) => {
     const defaultState = {
         material: {},
         style: {},
-        media: {
-            hasDeclaration: false,
-            max_width: [], min_width: [], max_height: [], min_height: [],
-            _max_width: {}, _min_width: {}, _max_height: {}, _min_height: {},
-        }
+        media: null,
+    };
+
+    const defaultMedia = {
+         max_width: [],  min_width: [],  max_height: [],  min_height: [],
+        _max_width: {}, _min_width: {}, _max_height: {}, _min_height: {},
     };
 
     extractRules(allRules).forEach((rule) => {
@@ -246,7 +247,7 @@ const CSStringToObject = (str) => {
             return select.split(":");
         }).forEach((select) => {
             const className = select[0];
-            let state = select[1] || "_default";
+            const state = select[1] || "_default";
             if (!classes[ className ]) { classes[ className ] = { states: { _default: defaultState } }; }
             if (!classes[ className ].states[ state ]) { classes[ className ].states[ state ] = defaultState; }
 
@@ -259,17 +260,37 @@ const CSStringToObject = (str) => {
 
     // media max-width X only applies if screen is LESS than X
     // media min-width X only applies if screen is MORE than X
-    const medias = allMedias.map((rule) => {
-        console.log(rule.media);
-        const hasLimit = rule.media && rule.media.match(/[a-z]+[\ ]+and[\ ]+\((min|max)-(width|height)[\ ]*:[\ ]*([0-9]+px);?\)$/);
+    allMedias.map((media) => {
+        const hasLimit = media.media && media.media.match(/[a-z]+[\ ]+and[\ ]+\((min|max)-(width|height)[\ ]*:[\ ]*([0-9]+px);?\)$/);
         if (hasLimit && hasLimit[1] && hasLimit[2] && hasLimit[3]) {
-            console.log(`Limit: ${ hasLimit[1] }_${ hasLimit[2] } : ${ hasLimit[3] }`);
-        }
-    }).filter(Boolean);
+            if (!media.rules || media.rules.length === 0) return;
+            const limitType  = hasLimit[1]; // min | max
+            const limitAxis  = hasLimit[2]; // width | height
+            const limitValue = parseFloat(hasLimit[3]); // size px
 
-    if (medias.length > 0) {
-        //
-    }
+            extractRules(media.rules).forEach((rule) => {
+                rule.selectors.map((select) => {
+                    return select.split(":");
+                }).forEach((select) => {
+                    const className = select[0];
+                    const state = select[1] || "_default";
+                    if (classes[ className ] && classes[ className ].states[ state ]) {
+                        let media = classes[ className ].states[ state ].media;
+                        if (!media) {
+                            classes[ className ].states[ state ].media = JSON.parse(JSON.stringify(defaultMedia));
+                            media = classes[ className ].states[ state ].media
+                        }
+                        const type          = limitType+'_'+limitAxis;
+                        const currentValues = media[ type ] || [];
+                        const values        = Array.from(new Set([ ...currentValues, limitValue ]));
+                        const currentState  = media[ "_"+type ][ limitValue ] || {};
+                        media[ type ] = values;
+                        media[ "_"+type ][ limitValue ] = { ...currentState, ...rule.declarations };
+                    }
+                });
+            });
+        }
+    });
 
 
     return classes;
