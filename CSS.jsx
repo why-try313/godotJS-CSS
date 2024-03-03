@@ -1,8 +1,7 @@
-import CSStringToObject from "./Utils/CSSStringToObject.jsx";
-import { MOUSE_FILTER, } from "res://addons/div/css/Utils/CSS_Utils.js";
-import { INITIAL_STATE }  from "./Utils/CSS_Constants.jsx";
-import ShaderMat from "./CSS_material.tres";
-import Shader from "./CSS_shader.gdshader";
+import CSStringToObject             from "./Utils/CSSStringToObject.jsx";
+import { INITIAL_STATE, MOUSE_FILTER, GDCursors }  from "./Utils/CSS_Constants.jsx";
+import ShaderMat                              from "./CSS_material.tres";
+import Shader                               from "./CSS_shader.gdshader";
 
 const log = (txt, strTab, indent) => console.log(JSON.stringify(txt, strTab, indent));
 const _css = `
@@ -69,6 +68,7 @@ export default class CSS extends godot.Panel {
         const style = new godot.StyleBoxFlat();
         this.#style = style.duplicate();
         this.#style.bg_color = new godot.Color(0,1,0,0);
+        this.#style.anti_aliasing_size = 0.25;
         this.set('custom_styles/panel', this.#style);
 
         this.material = ShaderMat.duplicate();
@@ -96,13 +96,10 @@ export default class CSS extends godot.Panel {
             "transform.translate": { x: 0, y: 0 },
         };
 
-        [ "left", "right", "top", "bottom" ].forEach((param) => {
-            this.#style[ "border_width_" + param ] = testState.border[ param ];
-        });
-        this.#style["border_color"] = new godot.Color(...testState.border.color);
-        this.#style.shadow_color = new godot.Color(...testState.boxShadow.color);
-        this.#style.shadow_size = testState.boxShadow.size;
-        this.#style.shadow_offset = new godot.Vector2(testState.boxShadow.x, testState.boxShadow.y);
+        // this.#style["border_color"] = new godot.Color(...testState.border.color);
+        // this.#style.shadow_color = new godot.Color(...testState.boxShadow.color);
+        // this.#style.shadow_size = testState.boxShadow.size;
+        // this.#style.shadow_offset = new godot.Vector2(testState.boxShadow.x, testState.boxShadow.y);
     }
 
     _ready() {
@@ -152,14 +149,22 @@ export default class CSS extends godot.Panel {
 
 
     #loadCSS() {
-        const rules = CSStringToObject(this.#inline_css);
+        let rules = null;
+        try {
+            rules = CSStringToObject(this.#inline_css);
+        } catch(e) { console.log(e); }
         const name  = this.#selfCSSname;
         if (!rules || !rules[ name ] || !rules[ name ].states._default) return;
 
         this.#states = rules[ name ].states;
         this.#currentState = JSON.parse(JSON.stringify({ ...this.#initialState }));
         this.#currentStateName = "init";
-        const inheritFromDefault = [ "transform.translate", "background-color" ];
+        const inheritFromDefault = [
+            "transform.translate",
+            "background-color",
+            "border-radius",
+            "opacity"
+        ];
         const otherStates = Object.keys(this.#states).filter(e => e !== "_default");
         if (this.#states._default) {
             this.#states._default = { ...this.#initialState, ...this.#states._default };
@@ -228,7 +233,8 @@ export default class CSS extends godot.Panel {
 
         const Val = (prop, sub) => {
             const val = sub ? nextState[prop][sub] : nextState[prop];
-            if (val.p) return parentPercent[prop](val.v);
+            if (typeof val === "number") return val;
+            if (val.p) return parentPercent[prop] ? parentPercent[prop](val.v) : val.v;
             return val.v;
         };
 
@@ -237,31 +243,41 @@ export default class CSS extends godot.Panel {
             "left":       (p) => { cs.margin_left   = Val(p); },
             "top":        (p) => { cs.margin_top    = Val(p); },
             "width":      (p) => { const val = Val(p); cs.margin_right  = cs.margin_left + val; cs.width = val; },
-            "right":      (p) => { const val = Val(p); cs.width  = p_x-(cs.margin_left + val); cs.margin_right = cs.margin_left+cs.width; },
+            "right":      (p) => { const val = Val(p); if (nextState.left) { cs.width = p_x - (cs.margin_left+val); } else if (nextState.width) { cs.margin_left = p_x - (cs.width+val); } cs.margin_right = cs.margin_left+cs.width; },
             "height":     (p) => { const val = Val(p); cs.margin_bottom = cs.margin_top + val; cs.height = val; },
-            "bottom":     (p) => { const val = Val(p); cs.height = p_y-(cs.margin_top + val); cs.margin_bottom = cs.margin_top+cs.height; },
+            "bottom":     (p) => { const val = Val(p); if (nextState.top) { cs.height = p_y - (cs.margin_top+val); } else if (nextState.height) { cs.margin_top = p_y - (cs.height+val); } cs.margin_bottom = cs.margin_top+cs.height; },
+            // "bottom":     (p) => { const val = Val(p); cs.height = p_y-(cs.margin_top + val); cs.margin_bottom = cs.margin_top+cs.height; },
 
-            "max-width":  (p) => { const val = Val(p); if (cs.width > val)  { cs.margin_right = cs.margin_left + val; cs.width = val; } },
-            "min-width":  (p) => { const val = Val(p); if (cs.width < val)  { cs.margin_right = cs.margin_left + val; cs.width = val; } },
+            "max-width":  (p) => { const val = Val(p); if (cs.width  > val) { cs.margin_right = cs.margin_left + val; cs.width  = val; } },
+            "min-width":  (p) => { const val = Val(p); if (cs.width  < val) { cs.margin_right = cs.margin_left + val; cs.width  = val; } },
             "max-height": (p) => { const val = Val(p); if (cs.height > val) { cs.margin_bottom = cs.margin_top + val; cs.height = val; } },
             "min-height": (p) => { const val = Val(p); if (cs.height < val) { cs.margin_bottom = cs.margin_top + val; cs.height = val; } },
 
+            "opacity":    (p) => { cs.modulate = [ 1.0, 1.0, 1.0, Val(p) ]; },
+            "cursor":     (p) => { cs.mouse_default_cursor_shape = GDCursors[ nextState[p] ]; },
+            "background-color":     (p) => { cs.material["set_color"] = nextState[p]; },
             "border-radius":        (p) => { Object.keys(nextState[p]).forEach((key) => { cs.style[ "corner_radius_"+key ] = nextState[p][key].v; }); },
+            "border-size":          (p) => { [ "left", "right", "top", "bottom" ].forEach((param) => { cs.style[ "border_width_" + param ] = nextState[ p ].v; }); },
+            "border-color":         (p) => { cs.style.border_color = nextState[ p ]; },
 
             "transform.scale":      (p) => { cs.rect_scale = nextState[p]; },
-            "transform.translate":  (p) => { const val = nextState[p]; cs.anchor_left = cs.anchor_right  = (cs.width*val.x) /p_x; cs.anchor_top  = cs.anchor_bottom = (cs.height*val.y)/p_y; },
+            "transform.translate":  (p) => { const val = nextState[p]; cs.anchor_left = cs.anchor_right = (cs.width*val.x) /p_x; cs.anchor_top = cs.anchor_bottom = (cs.height*val.y) /p_y; },
             "transform-origin":     (p) => { const val = nextState[p]; cs.rect_pivot_offset = { x: Math.round(cs.width*val.x), y: Math.round(cs.height*val.y) }; },
             "backdrop-filter.blur": (p) => { cs.material[ "blur_amount" ] = parseFloat(Val(p) ? Val(p)/2 : 0); },
-            "background-color":     (p) => { cs.material["set_color"] = nextState[p]; },
         };
 
         if (!applyValuesKeys) { applyValuesKeys = Object.keys(applyValues); }
 
-        applyValuesKeys.forEach((prop) => {
-            if (nextState[ prop ]) { applyValues[prop](prop); }
-        });
-
-        this.#applyCurrentState(cs, name);
+        if (nextState.display !== "none" && !(nextState.opacity && nextState.opacity.v === 0)) {
+            this.visible = true;
+            applyValuesKeys.forEach((prop) => {
+                if (nextState[ prop ]) { applyValues[prop](prop); }
+            });
+            // log({ ...cs, name: this.name }, null, 4);
+            this.#applyCurrentState(cs, name);
+        } else {
+            this.visible = false;
+        }
     }
 
 
@@ -275,9 +291,16 @@ export default class CSS extends godot.Panel {
         };
 
         [// Sourcs        Props to be applied
-            [ null,       [ "margin_left", "margin_right", "margin_top", "margin_bottom", "anchor_left", "anchor_right", "anchor_top", "anchor_bottom" ]],
+            [ null,       [
+                "margin_left", "margin_right", "margin_top", "margin_bottom",
+                "anchor_left", "anchor_right", "anchor_top", "anchor_bottom",
+                "mouse_default_cursor_shape"
+            ]],
             [ "material", [ "blur_amount" ]],
-            [ "style",    [ "corner_radius_top_left", "corner_radius_top_right", "corner_radius_bottom_left", "corner_radius_bottom_right", ]],
+            [ "style",    [
+                "corner_radius_top_left", "corner_radius_top_right", "corner_radius_bottom_left", "corner_radius_bottom_right",
+                "border_width_left", "border_width_right", "border_width_top", "border_width_bottom",
+            ]],
         ].forEach((def) => {
             const sourceName = def[0];
             const allProps   = def[1];
@@ -299,7 +322,9 @@ export default class CSS extends godot.Panel {
 
         [// Source  Axis        Axis for type    Props to be applied
             [ null, ['x', 'y'], godot.Vector2, [ "rect_scale", "rect_pivot_offset" ] ],
+            [ null, [0,1,2,3], godot.Color, [ "modulate" ] ],
             [ "material", [ 0, 1, 2, 3 ], godot.Color, [ "set_color" ] ],
+            [ "style",    [ 0, 1, 2, 3 ], godot.Color, [ "border_color" ] ],
         ].forEach((def) => {
             const sourceName = def[0];  const axes       = def[1];
             const format     = def[2];  const allProps   = def[3];

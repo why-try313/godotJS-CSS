@@ -1,4 +1,5 @@
-import Parser from "res://addons/div/css/Utils/CSS_Parser.js"
+import Parser from "./CSS_Parser.js";
+import { CSSCursors, defaultMedia } from "./CSS_Constants.jsx";
 
 const rex = {
     px: /^-?[0-9]+(\.[0-9]+)?px$/,
@@ -17,6 +18,9 @@ const valueValidation = {
     px: (value) => {
         return value.trim().match(rex.px) ? { v: parseFloat(value), p: false } : null;
     },
+    float: (value) => {
+        return value.trim().match(rex.float) ? { v: parseFloat(value), p: false } : null;
+    },
     percent: (value) => {
         return value.trim().match(rex.percent) ? { v: parseFloat(value)/100, p: true } : null;
     },
@@ -26,8 +30,10 @@ const valueValidation = {
         const match = value.trim().replace(/^\./, "0.").match(rex.pxOrPercent);
 
         if (!match) return undefined;
-        if (value.match(rex.number) || value.indexOf("px") > -1) { return { v: parseFloat(value), p: false }; }
-        else if (value.indexOf("%") > -1) { return { v: parseFloat(value)/100, p: true }; }
+        let res = undefined;
+        if (value.indexOf("%") > -1) { res = { v: parseFloat(value)/100, p: true }; }
+        else if (value.match(rex.number) || value.indexOf("px") > -1) { res = { v: parseFloat(value), p: false }; }
+        return res;
     },
 
     getAxis(_str, type, separator = ",", setAxis = ["x", "y"]) {
@@ -53,7 +59,7 @@ const valueValidation = {
         if (maxLen === 2 && setAxis.length === 4) {
             [ setAxis.slice(0, 2), setAxis.slice(2, 4) ].forEach((group, index) => { group.forEach((_axis) => { result[ _axis ] = axis[ index ]; }); });
         } else {
-            setAxis.forEach((_axis, index) => { result[ _axis ] = axis[ index > maxLen-1 ? index : maxLen-1 ]; });
+            setAxis.forEach((_axis, index) => { result[ _axis ] = axis[ index > (maxLen-1) ? maxLen-1 : index ]; });
         }
         return result;
     },
@@ -125,7 +131,7 @@ const isValidCSSValue = (value, prop, vars) => {
     }
 
     const {
-        px, percent, pxOrPercent, color,
+        px, percent, pxOrPercent, color, float,
         percentsAxis, floatAxis, directionsAxis
     } = valueValidation;
 
@@ -144,6 +150,11 @@ const isValidCSSValue = (value, prop, vars) => {
         "border-radius": directionsAxis,
         // "background": color, §§ turnPropIntoSubproperties=>background
         "background-color": color,
+        "border-size": px,
+        "border-color": color,
+        "opacity": float,
+        "cursor": (str) => CSSCursors[str.trim()],
+        "display": (str) => [ "block", "inline-block", "inline", "none" ].indexOf(str.trim() > -1) ? str.trim() : null,
         // background-color
         // box-shadow      -- separator = space
         // border          -- separator = space
@@ -176,16 +187,29 @@ const turnPropIntoSubproperties = {
         const isAllowed = areAllowedFunctions(functions, allowed);
         // propX and propY are disable as it would result on a lot of more code
         if (functions && functions.length > 0 && isAllowed) {
-            return functions.map((fnAndValue) => {
+            const fns = functions.map((fnAndValue) => {
                 fnAndValue[0] = [ "transform", fnAndValue[0] ].join(".");
                 return fnAndValue;
             });
+            return fns;
         }
 
         return null;
     },
     'background': (value) => {
         return [ [ "background-color", value ] ];
+    },
+    'border': (str) => {
+        if (str.trim() === "none") { return [[ "border-size", "0px" ], [ "border-color", "rgba(0,0,0,0)" ]] }
+
+        const two_args = str.trim().split(/[\ ]+/);
+        if (two_args.length === 3 && two_args[1] === "solid") {
+            return [
+                [ "border-size", two_args[0] ],
+                [ "border-color", two_args[2] ]
+            ];
+        }
+        return [];
     }
 };
 
@@ -266,11 +290,6 @@ const CSStringToObject = (str) => {
         material: {},
         style: {},
         media: null,
-    };
-
-    const defaultMedia = {
-         max_width: [],  min_width: [],  max_height: [],  min_height: [],
-        _max_width: {}, _min_width: {}, _max_height: {}, _min_height: {},
     };
 
     extractRules(allRules).forEach((rule) => {
