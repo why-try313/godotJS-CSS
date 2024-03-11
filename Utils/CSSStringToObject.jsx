@@ -1,4 +1,5 @@
 import Parser from "./CSS_Parser.js";
+import Colors from "./CSS_Colors.js";
 import { CSSCursors, defaultMedia } from "./CSS_Constants.jsx";
 
 const rex = {
@@ -64,10 +65,12 @@ const valueValidation = {
         return result;
     },
 
+    pxAxis:          (_str) => valueValidation.getAxis(_str, "px"),
     percentsAxis:    (_str) => valueValidation.getAxis(_str, "percent"),
     floatAxis:       (_str) => valueValidation.getAxis(_str, "float"),
     directionsAxis:  (_str) => valueValidation.getAxis(_str, "pxOrPercent", /[\ ]{1,}/g, [ "top_left","bottom_right","top_right","bottom_left" ]),
     color: (str) => {
+        if (Colors[str]) { return Colors[str]; }
         const isHex  = str.trim().match(rex.hex);
         const isRGB  = str.trim().match(rex.rgb);
         const isRGBA = str.trim().match(rex.rgba);
@@ -132,7 +135,7 @@ const isValidCSSValue = (value, prop, vars) => {
 
     const {
         px, percent, pxOrPercent, color, float,
-        percentsAxis, floatAxis, directionsAxis
+        percentsAxis, pxAxis, floatAxis, directionsAxis
     } = valueValidation;
 
     const transforms = {
@@ -155,6 +158,9 @@ const isValidCSSValue = (value, prop, vars) => {
         "opacity": float,
         "cursor": (str) => CSSCursors[str.trim()],
         "display": (str) => [ "block", "inline-block", "inline", "none" ].indexOf(str.trim() > -1) ? str.trim() : null,
+        "box-shadow.size": px,
+        "box-shadow.color": color,
+        "box-shadow.offset": pxAxis,
         // background-color
         // box-shadow      -- separator = space
         // border          -- separator = space
@@ -210,6 +216,15 @@ const turnPropIntoSubproperties = {
             ];
         }
         return [];
+    },
+    "box-shadow": (value) => {
+        const arr = value.split(/[\ ]+/);
+        if (arr.length < 3 || arr.length > 4) return undefined;
+        return [
+            [ "box-shadow.offset", arr[0]+", "+arr[1] ],
+            [ "box-shadow.size", arr[2] ],
+            [ "box-shadow.color", arr[3] || "#000000" ],
+        ];
     }
 };
 
@@ -292,14 +307,18 @@ const CSStringToObject = (str) => {
         media: null,
     };
 
+    let ID_pre = "ID_";
+    let ID_idx = 0;
+
     extractRules(allRules).forEach((rule) => {
         rule.selectors.map((select) => {
             return select.split(":");
         }).forEach((select) => {
             const className = select[0];
             const state = select[1] || "_default";
-            if (!classes[ className ]) { classes[ className ] = { states: { _default: defaultState } }; }
+            if (!classes[ className ]) { ID_idx++; classes[ className ] = { ID: ID_pre+ID_idx, states: { _default: defaultState } }; }
             if (!classes[ className ].states[ state ]) { classes[ className ].states[ state ] = defaultState; }
+
 
             classes[ className ].states[ state ] = {
                 ...classes[ className ].states[ state ],
