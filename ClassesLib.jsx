@@ -1,20 +1,41 @@
 import CSStringToObject from "./Utils/CSSStringToObject.jsx";
-import { log, getFile, fileExists } from "./Utils/utils.js";
+import { log, getFile, fileExists, FileWatch } from "./Utils/utils.js";
 
 class ClassesLib {
+    #rootFolder = "res://CSS/_test/css";
+    #rootFile = "res://CSS/_test/css/style.css";
     #states = {};
-    #rootFolder = "res://CSS";
-    #rootFile = "res://CSS/style.css";
     #compounds = [];
     #shortPaths = {
         // .class/#id: [ index, index, ... ]
     };
+    // Trigger on reload
+    #elements = {};
 
     constructor() {
+        this.nodeInTree = null;
+        this.fileWatch = new FileWatch(200);
+        this.getMainCSSFile = this.getMainCSSFile.bind(this);
+        this.fileWatch.onChange(this.getMainCSSFile);
+
         try {
             this.#getMainCSSFile();
         } catch(e) {
             console.log(e);
+        }
+    }
+
+    getMainCSSFile() {
+        this.#getMainCSSFile();
+        Object.values(this.#elements).forEach(e => {
+            e.reload();
+        });
+    }
+
+    init(Node) {
+        if (!this.nodeInTree) {
+            this.nodeInTree = Node.get_node("/root");
+            this.fileWatch.setRoot(this.nodeInTree);
         }
     }
 
@@ -56,41 +77,47 @@ class ClassesLib {
         // Do not apply recursive imports, style.css should
         // be the only one to import to avoid conflicts
 
-        if (file.indexOf("import ") < 0) return file;
-        return file.split("\n").map((line) => {
-            if (line.indexOf("import") < 0) return line;
+        if (file.indexOf("@import ") < 0) return file;
+        const result = file.split("\n").map((line) => {
+            if (line.indexOf("@import") < 0) return line;
 
-            const isReallyImport = line.match(/^[\t\ ]*import[\t\ ]+(.*\.css);$/);
+            const isReallyImport = line.match(/^[\t\ ]*@import[\t\ ]+"(.*\.css)";$/);
             if (!isReallyImport) return line;
 
-            const file = line.split(/[\t\ ]*import[\t\ ]+/).pop().replace(/^\//, "res://").replace(/^\.\//, this.#rootFolder);
+            const file = line.trim().split(/[\t\ ]*@import[\t\ ]+"/).pop().replace(/^\//, "res://").replace(/^\.\//, this.#rootFolder+"/").replace(/\";$/, '');
             const filePath = file.indexOf("res://") === 0 ? file : this.#rootFolder+"/"+file;
             if (fileExists(filePath)) {
                 if (imports[filePath]) {
                     console.log(`Warning! File ${ filePath } inserted more than once`);
                 }
                 imports[filePath] = true;
-                return getFile(filePath);
+                return getFile(filePath)+"\n";
             } else {
                 console.log(`Warning: File ignored - "${ filePath }" not found.`);
                 return "";
             }
         }).join('\n');
+
+        this.fileWatch.files = [ ...Object.keys(imports), this.#rootFile ];
+
+        return result;
     }
 
     #getMainCSSFile() {
-        try {
-            const file  = getFile(this.#rootFile);
-            const rules = this.parseCSS(this.#extractImportsOnCSSFile(file));
-            if (!rules || Object.keys(rules).length === 0) throw new Error("No rules found");
-        } catch (e) {
-            return console.log(e);
-        }
+        const file  = getFile(this.#rootFile);
+        const fileWithImports = this.#extractImportsOnCSSFile(file);
+        console.log(fileWithImports.match(/max-width: .*/g));
+        const rules = this.parseCSS(fileWithImports);
+        if (!rules || Object.keys(rules).length === 0) throw new Error("No rules found");
+
+        this.#states = {};
+        this.#compounds = [];
+        this.#shortPaths = {};
 
         const compounds = Object.keys(rules).map((identifier) => {
             const declaration = rules[ identifier ];
             const ID = declaration.ID;
-            if (this.#states[ ID ]) { this.#states[ ID ] = declaration.states; }
+            if (!this.#states[ ID ]) { this.#states[ ID ] = declaration.states; }
             const selectors = identifier.split(/[\ ]+/g);
             return selectors.map((path) => {
                 const isValidSelector = path.match(/^([#\.]{1}[^#\.]+)+$/g);
@@ -256,13 +283,16 @@ class ClassesLib {
         return hasRules ? Object.keys(rules) : [];
     }
 
-    getRules(path) { // Get rules from path
+    getRules(path, object) { // Get rules from path
+        this.#elements[ object.get_path() ] = object;
+
         const rules = this.#pathResolver(path);
-        const allStyles = {};
+        let allStyles = {};
         rules.forEach((rule) => {
             allStyles = { ...allStyles, ...this.#states[rule] };
             // /!\ needs a media merger
         });
+        return allStyles;
     }
 }
 
