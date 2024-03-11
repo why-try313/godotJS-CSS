@@ -14,7 +14,7 @@ class ClassesLib {
 
     constructor() {
         this.nodeInTree = null;
-        this.fileWatch = new FileWatch(200);
+        this.fileWatch = new FileWatch(100);
         this.getMainCSSFile = this.getMainCSSFile.bind(this);
         this.fileWatch.onChange(this.getMainCSSFile);
 
@@ -35,8 +35,12 @@ class ClassesLib {
     init(Node) {
         if (!this.nodeInTree) {
             this.nodeInTree = Node.get_node("/root");
-            this.fileWatch.setRoot(this.nodeInTree);
+            this.deferred();
         }
+    }
+
+    async deferred() {
+        this.fileWatch.setRoot(this.nodeInTree);
     }
 
     #isSelector(obj) {
@@ -106,7 +110,6 @@ class ClassesLib {
     #getMainCSSFile() {
         const file  = getFile(this.#rootFile);
         const fileWithImports = this.#extractImportsOnCSSFile(file);
-        console.log(fileWithImports.match(/max-width: .*/g));
         const rules = this.parseCSS(fileWithImports);
         if (!rules || Object.keys(rules).length === 0) throw new Error("No rules found");
 
