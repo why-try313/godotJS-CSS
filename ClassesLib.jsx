@@ -1,8 +1,10 @@
 import CSStringToObject from "./Utils/CSSStringToObject.jsx";
-import { log, getFile } from "./Utils/utils.js";
+import { log, getFile, fileExists } from "./Utils/utils.js";
 
 class ClassesLib {
     #states = {};
+    #rootFolder = "res://CSS";
+    #rootFile = "res://CSS/style.css";
     #compounds = [];
     #shortPaths = {
         // .class/#id: [ index, index, ... ]
@@ -12,7 +14,7 @@ class ClassesLib {
         try {
             this.#getMainCSSFile();
         } catch(e) {
-            log({ error: e });
+            console.log(e);
         }
     }
 
@@ -47,10 +49,43 @@ class ClassesLib {
         return index;
     }
 
+    // Replace imports by their css file
+    #extractImportsOnCSSFile(file) {
+        let imports = {};
+
+        // Do not apply recursive imports, style.css should
+        // be the only one to import to avoid conflicts
+
+        if (file.indexOf("import ") < 0) return file;
+        return file.split("\n").map((line) => {
+            if (line.indexOf("import") < 0) return line;
+
+            const isReallyImport = line.match(/^[\t\ ]*import[\t\ ]+(.*\.css);$/);
+            if (!isReallyImport) return line;
+
+            const file = line.split(/[\t\ ]*import[\t\ ]+/).pop().replace(/^\//, "res://").replace(/^\.\//, this.#rootFolder);
+            const filePath = file.indexOf("res://") === 0 ? file : this.#rootFolder+"/"+file;
+            if (fileExists(filePath)) {
+                if (imports[filePath]) {
+                    console.log(`Warning! File ${ filePath } inserted more than once`);
+                }
+                imports[filePath] = true;
+                return getFile(filePath);
+            } else {
+                console.log(`Warning: File ignored - "${ filePath }" not found.`);
+                return "";
+            }
+        }).join('\n');
+    }
+
     #getMainCSSFile() {
-        const file = getFile("res://CSS/style.css");
-        const rules = this.parseCSS(file);
-        if (!rules || Object.keys(rules).length === 0) return;
+        try {
+            const file  = getFile(this.#rootFile);
+            const rules = this.parseCSS(this.#extractImportsOnCSSFile(file));
+            if (!rules || Object.keys(rules).length === 0) throw new Error("No rules found");
+        } catch (e) {
+            return console.log(e);
+        }
 
         const compounds = Object.keys(rules).map((identifier) => {
             const declaration = rules[ identifier ];
@@ -118,8 +153,6 @@ class ClassesLib {
                 cursor = cursor[ objIndex ].children;
             });
         });
-        // log(this.#compounds, null, 4);
-        // log(this.#shortPaths, null, 4);
     }
 
     parseCSS(str) {
@@ -227,8 +260,8 @@ class ClassesLib {
         const rules = this.#pathResolver(path);
         const allStyles = {};
         rules.forEach((rule) => {
-        	allStyles = { ...allStyles, ...this.#states[rule] };
-        	// /!\ needs a media merger
+            allStyles = { ...allStyles, ...this.#states[rule] };
+            // /!\ needs a media merger
         });
     }
 }
