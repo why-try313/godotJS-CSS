@@ -1,8 +1,8 @@
 // import CSStringToObject from "./Utils/CSSStringToObject.jsx";
 import { INITIAL_STATE, MOUSE_FILTER, GDCursors }  from "./Utils/CSS_Constants.jsx";
 import ShaderMat from "./CSS_material.tres";
-import Shader from "./CSS_shader.gdshader";
-import Lib from "./ClassesLib.jsx";
+import Shader    from "./CSS_shader.gdshader";
+import Lib       from "./ClassesLib.jsx";
 // import { log } from "./Utils/utils.js";
 
 let applyValuesKeys = null;
@@ -27,7 +27,7 @@ export default class CSS extends godot.Panel {
 
     #id          = "";
     #classes     = [];
-    #classString = [];
+    #classString = "";
     #ready       = false;
     #inline_css  = "";
 
@@ -61,35 +61,22 @@ export default class CSS extends godot.Panel {
     #buildClasses() {
         // Get all classes and ID from repository to merge to the current element
         // current element is merge last as inline/editor declarations have priority to crush old ones
-        this.#classes = this.#classString.split(/[\ ,]+/).map((e) => e.trim().replace(/^\./, ""));
-        if (this.#id && this.#id.length > 0) { this.compound.id = [ this.#id.replace(/^#/, "") ]; }
-        if (this.#classes && this.#classes.length > 0) { this.compound.class = [ this.#classes ]; }
+        const compound = {};
+        this.#classes = this.#classString.split(/[\ ,]+/).map((e) => e.trim().replace(/^\./, "")).filter(c => c && c.length > 0);
+        if (this.#id && this.#id.length > 0) { compound.id = [ this.#id.replace(/^#/, "") ]; }
+        if (this.#classes && this.#classes.length > 0) { compound.class = this.#classes.filter(c => c && c.length > 0); }
+        this.compound = compound;
+        this.#loadCSS();
     }
 
 
     get 'inline_CSS/text' () { return this.#inline_css; }
-    set 'inline_CSS/text' (value) { this.#inline_css = value; this.#loadCSS(); }
+    set 'inline_CSS/text' (value) { this.#inline_css = value; if (this.#ready) { this.#loadCSS(); } }
 
-    get _ID() { return this.#id || ""; } set _ID(value) { this.#id = value; }
+    get _ID() { return this.#id || ""; } set _ID(value) { this.#id = value; this.#buildClasses(); }
     get _class() { return this.#classString || ""; } set _class(value) { this.#classString = value; this.#buildClasses(); }
 
     #onInit() {
-        const testState = {
-            border: { top: 4, bottom: 4, left: 4, right: 4, color: [1,1,1,0.5] },
-            boxShadow: { x: 0, y: 4, size: 8, color: [ 0.0, 0.0, 0.0, 0.2 ] },
-            backgroundColor: [ 0.956863, 0.658824, 0.392157, 0.25098 ],
-            "transform.translate": { x: 0, y: 0 },
-        };
-
-        // this.#style["border_color"] = new godot.Color(...testState.border.color);
-        // this.#style.shadow_color = new godot.Color(...testState.boxShadow.color);
-        // this.#style.shadow_size = testState.boxShadow.size;
-        // this.#style.shadow_offset = new godot.Vector2(testState.boxShadow.x, testState.boxShadow.y);
-    }
-
-    _ready() {
-        this.#onInit();
-        this.afterReady = this.afterReady.bind(this);
         if (this.get_parent() && this.get_parent().has_signal("resized") && !this.get_parent().css) {
             this.get_parent().connect("resized", () => { this.#pendingRender = true; });
         }
@@ -106,6 +93,14 @@ export default class CSS extends godot.Panel {
             if (event.__class__ !== "InputEventMouseButton" || event.button_index !== 1) return;
             this.#mouseEvent.active = event.pressed; this.#setState();
         });
+    }
+
+
+    _ready() {
+        this.reload = this.reload.bind(this);
+        Lib.init(this);
+        this.#onInit();
+        this.afterReady = this.afterReady.bind(this);
 
         this.call_deferred("afterReady");
     }
@@ -133,35 +128,75 @@ export default class CSS extends godot.Panel {
     }
 
 
+    reload() { console.log("reloading"); this.#buildClasses(); }
     #loadCSS() {
         const rules = Lib.parseCSS(this.#inline_css);
         const name  = this.#selfCSSname;
-        if (!rules || !rules[ name ] || !rules[ name ].states._default) return;
-
-        this.#states = rules[ name ].states;
+        this.states = {};
         this.#currentState = JSON.parse(JSON.stringify({ ...this.#initialState }));
         this.#currentStateName = "init";
-        const inheritFromDefault = [
-            "transform.translate",
-            "background-color",
-            "border-radius",
-            "opacity"
-        ];
-        const otherStates = Object.keys(this.#states).filter(e => e !== "_default");
-        if (this.#states._default) {
-            this.#states._default = { ...this.#initialState, ...this.#states._default };
-            inheritFromDefault.forEach((prop) => {
-                if (this.#states._default[prop]) {
-                    otherStates.forEach((state) => {
-                        if (typeof this.#states[ state ][ prop ] === "undefined") {
-                            this.#states[ state ][ prop ] = this.#states._default[prop];
-                        }
-                    });
-                }
-            });
+        this.#setPath();
+
+        if (rules && rules[ name ] && rules[ name ].states && rules[ name ].states._default) {
+            this.#states = rules[ name ].states;
+            const inheritFromDefault = [
+                "transform.translate",
+                "background-color",
+                "border-radius",
+                "opacity"
+            ];
+            const otherStates = Object.keys(this.#states).filter(e => e !== "_default");
+            if (this.#states._default) {
+                this.#states._default = { ...this.#currentState, ...this.#states._default };
+                inheritFromDefault.forEach((prop) => {
+                    if (this.#states._default[prop]) {
+                        otherStates.forEach((state) => {
+                            if (typeof this.#states[ state ][ prop ] === "undefined") {
+                                this.#states[ state ][ prop ] = this.#states._default[prop];
+                            }
+                        });
+                    }
+                });
+            }
         }
+
+
         this.#ready = true;
         this.#setState();
+    }
+
+
+    // getDeclaredCSSRules() {
+    //     //
+    // }
+
+    // getInlineCSSRules() {
+    //     //
+    // }
+
+
+    #setPath() {
+        let path = [];
+        if (this.compound && (this.compound.class || this.compound.id)) {
+            let current = this;
+            while(current.get_parent) {
+                if (current.compound) {
+                    path.push(current.compound);
+                }
+                current = current.get_parent();
+            }
+            const rules = Lib.getRules(path.reverse(), this);
+            const statesNames = Array.from(new Set([...Object.keys(this.#states), ...Object.keys(rules)]));
+            statesNames.forEach((stateName) => {
+                if (stateName === "_default") {
+                    console.log(JSON.stringify(rules[stateName], null, 4));
+                }
+                this.#states[ stateName ] = {
+                    ...(this.#states[stateName] || {}),
+                    ...(rules[stateName] || {}),
+                };
+            });
+        }
     }
 
 
@@ -174,6 +209,7 @@ export default class CSS extends godot.Panel {
         if (this.#mouseEvent.active && this.#states["active"]) { state = "active"; }
         if (this.#currentStateName === state) return;
         if (!this.#states[ state ]) return;
+
         this.#setNextStateValues(this.#states[ state ], state);
     }
 
@@ -187,6 +223,7 @@ export default class CSS extends godot.Panel {
     #setNextStateValues(_nextState, name) {
         let nextState = JSON.parse(JSON.stringify(_nextState));
         const cs = JSON.parse(JSON.stringify(this.#currentState));
+        // console.log(JSON.stringify({ id: this.#id, ranNext: true, cs }, null, 4));
         const parent = this.#parent;
         const p_x = parent.rect_size.x;
         const p_y = parent.rect_size.y;
@@ -250,9 +287,7 @@ export default class CSS extends godot.Panel {
             "box-shadow.color":     (p) => { cs.style.shadow_color  = nextState[p]; },
             "box-shadow.offset":    (p) => { cs.style.shadow_offset = nextState[p]; },
         };
-        // this.#style.shadow_color = new godot.Color(...testState.boxShadow.color);
-        // this.#style.shadow_size = testState.boxShadow.size;
-        // this.#style.shadow_offset = new godot.Vector2(testState.boxShadow.x, testState.boxShadow.y);
+
         if (!applyValuesKeys) { applyValuesKeys = Object.keys(applyValues); }
 
         if (nextState.display !== "none" && !(nextState.opacity && nextState.opacity.v === 0)) {
@@ -273,7 +308,7 @@ export default class CSS extends godot.Panel {
         const methods = {
             // State objects reflect this private values
             // eg; nextState.style.prop = this.#style.prop
-            material: this.material,
+            material: this.#material,
             style: this.#style
         };
 
