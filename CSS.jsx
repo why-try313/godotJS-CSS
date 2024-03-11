@@ -1,33 +1,9 @@
-import CSStringToObject             from "./Utils/CSSStringToObject.jsx";
+// import CSStringToObject from "./Utils/CSSStringToObject.jsx";
 import { INITIAL_STATE, MOUSE_FILTER, GDCursors }  from "./Utils/CSS_Constants.jsx";
-import ShaderMat                              from "./CSS_material.tres";
-import Shader                               from "./CSS_shader.gdshader";
-
-const log = (txt, strTab, indent) => console.log(JSON.stringify(txt, strTab, indent));
-const _css = `
-    self {
-        left: 50%;
-        top: 50%;
-        width: 80%;
-        max-width: 500px;
-        height: 200px;
-        border-radius: 7px 7px;
-        backdrop-filter: blur(12px);
-        transform: translate(-50%, -50%) scale(1,1);
-    }
-    self:hover {
-        transform: scale(1.05,1.05);
-        backdrop-filter: blur(11px);
-    }
-    self:active {
-        border-radius: 12px 12px;
-        transform: scale(0.98, 0.98);
-        backdrop-filter: blur(8px);
-    }
-    @media screen and (max-width: 600px) {
-        self { backdrop-filter: blur(0px); width: 200px; }
-    }
-`;
+import ShaderMat from "./CSS_material.tres";
+import Shader from "./CSS_shader.gdshader";
+import Lib from "./ClassesLib.jsx";
+// import { log } from "./Utils/utils.js";
 
 let applyValuesKeys = null;
 
@@ -36,26 +12,28 @@ export default class CSS extends godot.Panel {
     #selfCSSname = "self";
     // eg: self { width: 20px; } self:hover { width: 40px; }
 
-    #initialState = INITIAL_STATE;
-    #states = {};
-    #parent = null;
-    #currentState = {};
     #currentStateName = "init";
-    #mouseEvent = { hover: false, focus: false, active: false };
-    #style = null;
-    /*!*\ #material = null; // Somehow not working if it's private (??) */
+    #initialState = INITIAL_STATE;
+    #states       = {};
+    #parent       = null;
+    #currentState = {};
+    #mouseEvent   = { hover: false, focus: false, active: false };
+    #style        = null;
+    #material     = null;
 
-    #minSecDelay = 0.1;
-    #pendingRender = false;
+    #minSecDelay    = 0.1;
+    #pendingRender  = false;
     #timeLastRender = 0;
 
-    #id = "";
-    #classes = [];
-    #ready = false;
-    #inline_css = "";
+    #id          = "";
+    #classes     = [];
+    #classString = [];
+    #ready       = false;
+    #inline_css  = "";
 
     constructor() {
         super();
+        this.compound = {};
         // this.classes = []; // To inherit 
         this.classList = {
             contains: (cls)      => this.#classes.indexOf(cls) > -1, 
@@ -71,9 +49,11 @@ export default class CSS extends godot.Panel {
         this.#style.anti_aliasing_size = 0.25;
         this.set('custom_styles/panel', this.#style);
 
-        this.material = ShaderMat.duplicate();
-        this.material.shader = Shader.duplicate();
-        this.material.set("shader_param/set_color", new godot.Color(...testState.backgroundColor));
+        this.#material = ShaderMat.duplicate();
+        this.#material.shader = Shader.duplicate();
+        this.#material.set("shader_param/set_color", new godot.Color(...testState.backgroundColor));
+        this.material = this.#material;
+        this.buildClasses();
     }
 
     // get id() { return this.#id; } set id(value) { this.#id = value; this.#buildClasses(); }
@@ -81,12 +61,17 @@ export default class CSS extends godot.Panel {
     #buildClasses() {
         // Get all classes and ID from repository to merge to the current element
         // current element is merge last as inline/editor declarations have priority to crush old ones
+        this.#classes = this.#classString.split(/[\ ,]+/).map((e) => e.trim().replace(/^\./, ""));
+        if (this.#id && this.#id.length > 0) { this.compound.id = [ this.#id.replace(/^#/, "") ]; }
+        if (this.#classes && this.#classes.length > 0) { this.compound.class = [ this.#classes ]; }
     }
 
 
-    get inline_CSS() { return this.#inline_css; }
-    set inline_CSS(value) { this.#inline_css = value; this.#loadCSS(); }
+    get 'inline_CSS/text' () { return this.#inline_css; }
+    set 'inline_CSS/text' (value) { this.#inline_css = value; this.#loadCSS(); }
 
+    get _ID() { return this.#id || ""; } set _ID(value) { this.#id = value; }
+    get _class() { return this.#classString || ""; } set _class(value) { this.#classString = value; this.#buildClasses(); }
 
     #onInit() {
         const testState = {
@@ -149,10 +134,7 @@ export default class CSS extends godot.Panel {
 
 
     #loadCSS() {
-        let rules = null;
-        try {
-            rules = CSStringToObject(this.#inline_css);
-        } catch(e) { console.log(e); }
+        const rules = Lib.parseCSS(this.#inline_css);
         const name  = this.#selfCSSname;
         if (!rules || !rules[ name ] || !rules[ name ].states._default) return;
 
@@ -264,8 +246,13 @@ export default class CSS extends godot.Panel {
             "transform.translate":  (p) => { const val = nextState[p]; cs.anchor_left = cs.anchor_right = (cs.width*val.x) /p_x; cs.anchor_top = cs.anchor_bottom = (cs.height*val.y) /p_y; },
             "transform-origin":     (p) => { const val = nextState[p]; cs.rect_pivot_offset = { x: Math.round(cs.width*val.x), y: Math.round(cs.height*val.y) }; },
             "backdrop-filter.blur": (p) => { cs.material[ "blur_amount" ] = parseFloat(Val(p) ? Val(p)/2 : 0); },
+            "box-shadow.size":      (p) => { cs.style.shadow_size   = Val(p); },
+            "box-shadow.color":     (p) => { cs.style.shadow_color  = nextState[p]; },
+            "box-shadow.offset":    (p) => { cs.style.shadow_offset = nextState[p]; },
         };
-
+        // this.#style.shadow_color = new godot.Color(...testState.boxShadow.color);
+        // this.#style.shadow_size = testState.boxShadow.size;
+        // this.#style.shadow_offset = new godot.Vector2(testState.boxShadow.x, testState.boxShadow.y);
         if (!applyValuesKeys) { applyValuesKeys = Object.keys(applyValues); }
 
         if (nextState.display !== "none" && !(nextState.opacity && nextState.opacity.v === 0)) {
@@ -298,6 +285,7 @@ export default class CSS extends godot.Panel {
             ]],
             [ "material", [ "blur_amount" ]],
             [ "style",    [
+                "shadow_size",
                 "corner_radius_top_left", "corner_radius_top_right", "corner_radius_bottom_left", "corner_radius_bottom_right",
                 "border_width_left", "border_width_right", "border_width_top", "border_width_bottom",
             ]],
@@ -324,7 +312,8 @@ export default class CSS extends godot.Panel {
             [ null, ['x', 'y'], godot.Vector2, [ "rect_scale", "rect_pivot_offset" ] ],
             [ null, [0,1,2,3], godot.Color, [ "modulate" ] ],
             [ "material", [ 0, 1, 2, 3 ], godot.Color, [ "set_color" ] ],
-            [ "style",    [ 0, 1, 2, 3 ], godot.Color, [ "border_color" ] ],
+            [ "style",    [ 'x', 'y' ], godot.Vector2, [ "shadow_offset" ] ],
+            [ "style",    [ 0, 1, 2, 3 ], godot.Color, [ "border_color", "shadow_color" ] ],
         ].forEach((def) => {
             const sourceName = def[0];  const axes       = def[1];
             const format     = def[2];  const allProps   = def[3];
@@ -366,4 +355,6 @@ export default class CSS extends godot.Panel {
 }
 
 godot.set_script_tooled(CSS, true);
-godot.register_property(CSS, "inline_CSS",  { type: String, hint: godot.PROPERTY_HINT_MULTILINE_TEXT, default: "" });
+godot.register_property(CSS, "_ID",  { type: String, hint: godot.PROPERTY_HINT_PLACEHOLDER_TEXT, hint_string: "Element ID, accpets only one", default: "" });
+godot.register_property(CSS, "_class",  { type: String, hint: godot.PROPERTY_HINT_PLACEHOLDER_TEXT, hint_string: ".class1 .class2", default: "" });
+godot.register_property(CSS, "inline_CSS/text",  { type: String, hint: godot.PROPERTY_HINT_MULTILINE_TEXT, default: "" });
