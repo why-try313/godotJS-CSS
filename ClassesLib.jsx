@@ -28,7 +28,11 @@ class ClassesLib {
     getMainCSSFile() {
         this.#getMainCSSFile();
         Object.values(this.#elements).forEach(e => {
-            e.reload();
+            if (e && e.is_inside_tree()) {
+                e.reload();
+            } else {
+                delete this.#elements[e];
+            }
         });
     }
 
