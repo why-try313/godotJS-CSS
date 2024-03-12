@@ -82,8 +82,12 @@ export default class CSS extends godot.Panel {
 
     #onInit() {
         if (this.get_parent() && this.get_parent().has_signal("resized") && !this.get_parent().css) {
-            this.get_parent().connect("resized", () => { this.#pendingRender = true; });
+            this.get_parent().connect("resized", () => { this.#reloadState(); });
         }
+
+        this.get_tree().root.connect("size_changed", () => {
+            this.#pendingRender = true;
+        });
 
         // hover
         this.connect("mouse_entered", () => { this.#mouseEvent.hover = true;  this.#setState(); });
