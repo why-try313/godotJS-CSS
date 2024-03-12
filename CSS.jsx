@@ -121,6 +121,15 @@ export default class CSS extends godot.Panel {
             if (!children || children.length === 0) return;
             children.forEach((child) => {
                 child.mouse_filter = passFilter;
+                if (!children.compound) {
+                    const anchorSum = children.anchor_left + children.anchor_top + children.anchor_right + children.anchor_bottom;
+                    if (anchorSum  === 0) {
+                        children.anchor_left   = 0;
+                        children.anchor_top    = 0;
+                        children.anchor_right  = 1;
+                        children.anchor_bottom = 1;
+                    }
+                }
                 walker(child);
             });
         };
