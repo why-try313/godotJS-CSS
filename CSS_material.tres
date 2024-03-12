@@ -4,7 +4,8 @@
 
 [resource]
 resource_local_to_scene = true
+render_priority = 1
 shader = ExtResource( 1 )
 shader_param/blur_amount = 4
-shader_param/set_color = Color( 1, 1, 1, 0.12 )
+shader_param/set_color = Color( 0.733333, 0.247059, 0.247059, 0.596078 )
 shader_param/chroma_color = Color( 0, 1, 0, 0 )

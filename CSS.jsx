@@ -45,7 +45,7 @@ export default class CSS extends godot.Panel {
 
         const style = new godot.StyleBoxFlat();
         this.#style = style.duplicate();
-        this.#style.bg_color = new godot.Color(0,1,0,0);
+        // this.#style.bg_color = new godot.Color(0,1,0,0);
         this.#style.anti_aliasing_size = 0.25;
         this.set('custom_styles/panel', this.#style);
 
@@ -55,6 +55,7 @@ export default class CSS extends godot.Panel {
 
         this.reload = this.reload.bind(this);
         this.afterReady = this.afterReady.bind(this);
+        this.hasFilter = false;
 
         this.buildClasses();
     }
@@ -100,8 +101,8 @@ export default class CSS extends godot.Panel {
 
 
     _ready() {
-        this.material = this.#material;
-        this.material.resource_local_to_scene = true;
+        // this.material = this.#material;
+        // this.material.resource_local_to_scene = true;
         this.#onInit();
 
         this.call_deferred("afterReady");
@@ -143,10 +144,18 @@ export default class CSS extends godot.Panel {
 
         const rules = {};
         const statesNames = Array.from(new Set([...Object.keys(declared), ...Object.keys(inline)]));
+        let hasFilter = false;
+
         statesNames.forEach((stateName) => {
+            const declaredRules = declared[stateName] || {};
+            const inlineRules   = inline[stateName]   || {};
+            if (!hasFilter) {
+                hasFilter = !!declaredRules["backdrop-filter.blur"] || !!inlineRules["backdrop-filter.blur"];
+            }
+
             rules[ stateName ] = {
-                ...(declared[stateName] || {}),
-                ...(inline[stateName] || {}),
+                ...declaredRules,
+                ...inlineRules,
             };
         });
         this.#states = rules;
@@ -169,6 +178,10 @@ export default class CSS extends godot.Panel {
                 }
             });
         }
+
+        this.hasFilter = hasFilter;
+        this.material = hasFilter ? this.#material : null;
+        if (hasFilter) { this.#style.bg_color = new godot.Color(0,1,0,0); }
 
         this.#setState();
     }
@@ -274,7 +287,7 @@ export default class CSS extends godot.Panel {
 
             "opacity":    (p) => { cs.modulate = [ 1.0, 1.0, 1.0, Val(p) ]; },
             "cursor":     (p) => { cs.mouse_default_cursor_shape = GDCursors[ nextState[p] ]; },
-            "background-color":     (p) => { cs.material["set_color"] = nextState[p]; },
+            "background-color":     (p) => { if (this.hasFilter) { cs.material["set_color"] = nextState[p] } else { cs.style["bg_color"] = nextState[p]; } },
             "border-radius":        (p) => { Object.keys(nextState[p]).forEach((key) => { cs.style[ "corner_radius_"+key ] = nextState[p][key].v; }); },
             "border-size":          (p) => { [ "left", "right", "top", "bottom" ].forEach((param) => { cs.style[ "border_width_" + param ] = nextState[ p ].v; }); },
             "border-color":         (p) => { cs.style.border_color = nextState[ p ]; },
@@ -318,7 +331,7 @@ export default class CSS extends godot.Panel {
                 "anchor_left", "anchor_right", "anchor_top", "anchor_bottom",
                 "mouse_default_cursor_shape"
             ]],
-            [ "material", [ "blur_amount" ]],
+            [ "material", [ "blur_amount" ]], // has filter
             [ "style",    [
                 "shadow_size",
                 "corner_radius_top_left", "corner_radius_top_right", "corner_radius_bottom_left", "corner_radius_bottom_right",
@@ -346,9 +359,9 @@ export default class CSS extends godot.Panel {
         [// Source  Axis        Axis for type    Props to be applied
             [ null, ['x', 'y'], godot.Vector2, [ "rect_scale", "rect_pivot_offset" ] ],
             [ null, [0,1,2,3], godot.Color, [ "modulate" ] ],
-            [ "material", [ 0, 1, 2, 3 ], godot.Color, [ "set_color" ] ],
+            [ "material", [ 0, 1, 2, 3 ], godot.Color, [ "set_color" ] ], // has filter
             [ "style",    [ 'x', 'y' ], godot.Vector2, [ "shadow_offset" ] ],
-            [ "style",    [ 0, 1, 2, 3 ], godot.Color, [ "border_color", "shadow_color" ] ],
+            [ "style",    [ 0, 1, 2, 3 ], godot.Color, [ "border_color", "shadow_color", "bg_color" ] ],
         ].forEach((def) => {
             const sourceName = def[0];  const axes       = def[1];
             const format     = def[2];  const allProps   = def[3];
