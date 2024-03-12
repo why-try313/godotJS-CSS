@@ -1,0 +1,6 @@
+[gd_resource type="CanvasItemMaterial" load_steps=2 format=2]
+
+[ext_resource path="res://addons/godotJS-CSS/CSS_material.tres" type="Material" id=1]
+
+[resource]
+next_pass = ExtResource( 1 )
