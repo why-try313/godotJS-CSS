@@ -2,8 +2,8 @@ import CSStringToObject from "./Utils/CSSStringToObject.jsx";
 import { log, getFile, fileExists, FileWatch } from "./Utils/utils.js";
 
 class ClassesLib {
-    #rootFolder = "res://CSS/_test/css";
-    #rootFile = "res://CSS/_test/css/style.css";
+    #rootFolder = "res://css";
+    #rootFile = "res://css/style.css";
     #states = {};
     #compounds = [];
     #shortPaths = {
