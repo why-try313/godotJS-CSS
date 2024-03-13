@@ -337,47 +337,30 @@ export default class CSS extends godot.Panel {
             material: this.material,
             style: this.#style
         };
+        const Apply   = (value) => value;
+        const Vector2 = (value) => new godot.Vector2(value.x, value.y);
+        const Color   = (value) => new godot.Color(...value);
 
-        [// Sourcs        Props to be applied
-            [ null,       [
-                "margin_left", "margin_right", "margin_top", "margin_bottom",
-                "anchor_left", "anchor_right", "anchor_top", "anchor_bottom",
-                "mouse_default_cursor_shape"
+        [// Sourcs        Method   Props to be applied
+            [ null,       Apply,   [ 
+                                     "margin_left", "margin_right", "margin_top", "margin_bottom",
+                                     "anchor_left", "anchor_right", "anchor_top", "anchor_bottom",
+                                     "mouse_default_cursor_shape"
             ]],
-            [ "material", [ "blur_amount" ]], // has filter
-            [ "style",    [
-                "shadow_size",
-                "corner_radius_top_left", "corner_radius_top_right", "corner_radius_bottom_left", "corner_radius_bottom_right",
-                "border_width_left", "border_width_right", "border_width_top", "border_width_bottom",
+            [ null,       Vector2, [ "rect_scale", "rect_pivot_offset" ] ],
+            [ null,       Color,   [ "modulate" ] ],
+            [ "material", Apply,   [ "blur_amount" ]], // has filter
+            [ "material", Color,   [ "set_color" ] ], // has filter
+            [ "style",    Apply,   [
+                                     "shadow_size",
+                                     "corner_radius_top_left", "corner_radius_top_right", "corner_radius_bottom_left", "corner_radius_bottom_right",
+                                     "border_width_left", "border_width_right", "border_width_top", "border_width_bottom"
             ]],
+            [ "style",    Color,   [ "border_color", "shadow_color", "bg_color" ] ],
+            [ "style",    Vector2, [ "shadow_offset" ] ],
         ].forEach((def) => {
-            const sourceName = def[0];
-            const allProps   = def[1];
-
-            const source  = sourceName ? nextState[ sourceName ] : nextState;
-            const kurrent = sourceName ? current[ sourceName ]   : current;
-            const applyTo = sourceName ? methods[ sourceName ]   : this;
-
-            allProps.forEach((prop) => {
-                if (typeof source[prop] === "undefined") return;
-                const nextValue = source[ prop ] || 0;
-                // Don't redraw same props - Applies to animation diff
-                if (typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue) {
-                    if (sourceName === "material") { applyTo.set_shader_param(prop, nextValue); }
-                    else { applyTo[ prop ] = nextValue; }
-                }
-            });
-        });
-
-        [// Source  Axis        Axis for type    Props to be applied
-            [ null, ['x', 'y'], godot.Vector2, [ "rect_scale", "rect_pivot_offset" ] ],
-            [ null, [0,1,2,3], godot.Color, [ "modulate" ] ],
-            [ "material", [ 0, 1, 2, 3 ], godot.Color, [ "set_color" ] ], // has filter
-            [ "style",    [ 'x', 'y' ], godot.Vector2, [ "shadow_offset" ] ],
-            [ "style",    [ 0, 1, 2, 3 ], godot.Color, [ "border_color", "shadow_color", "bg_color" ] ],
-        ].forEach((def) => {
-            const sourceName = def[0];  const axes       = def[1];
-            const format     = def[2];  const allProps   = def[3];
+            const sourceName = def[0];  const method     = def[1];
+            const allProps   = def[2];
 
             const source  = sourceName ? nextState[ sourceName ] : nextState;
             const kurrent = sourceName ? current[ sourceName ]   : current;
@@ -387,7 +370,7 @@ export default class CSS extends godot.Panel {
                 if (typeof source[prop] === "undefined") return;
                 const nextValue = source[ prop ];
                 if (typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue) {
-                    const val = new format(...axes.map((axis) => nextValue[axis]));
+                    const val = method(nextValue);
                     if (sourceName === "material") { applyTo.set_shader_param(prop, val); }
                     else { applyTo[ prop ] = val; }
                 }
