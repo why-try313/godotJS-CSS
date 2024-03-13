@@ -27,11 +27,12 @@ CSS support integration for Godot JavaScript<br/>
 <br/>
 
 ## Current Features
-- [ ] Custom `Div` element to set class/ID/inline-style
-- [ ] CSS file parsing - Only on `style.css` as entry point, use `@import` to split files
-- [ ] Inline CSS with Div property
-- [ ] Hot reload on editor and in-game - will be toggable for in-game in the future and disabled by default
-- [ ] Properties:
+- [x] Custom `Div` element to set class/ID/inline-style
+- [x] CSS file parsing - Only on `style.css` as entry point, use `@import` to split files
+- [x] Inline CSS with Div property
+- [x] Hot reload on editor and in-game - will be toggable for in-game in the future and disabled by default
+- [x] `:root` variables
+- [x] Properties:
   - **Geometry:** width, height, top, left, bottom, right
   - **Limits:** max-width, max-height, min-width, min-height
   - **Transforms:** scale, translate, origin
@@ -43,7 +44,6 @@ CSS support integration for Godot JavaScript<br/>
 
 ## Next Features
 - [ ] `transition` animations
-- [ ] `:root` variables
 - [ ] `calc` values
 - [ ] `blur`, not only on background but on content as well
 - [ ] CSS detection on file creation - to avoid reloading the project on first `style.css` creation

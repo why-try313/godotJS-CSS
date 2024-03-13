@@ -229,12 +229,19 @@ const turnPropIntoSubproperties = {
 };
 
 const extractRules = (rulesArray) => {
+    let rootVars = {};
     return rulesArray.map((rule) => {
         const declarations = {};
-        const vars = {};
+        const vars = { ...rootVars };
         rule.declarations.filter((dec) => dec.property && dec.property.slice(0,2) === "--").forEach((dec) => {
             vars[ dec.property ] = dec.value;
         });
+
+        const isRootSelector = (rule.selectors || []).filter(e => e === ":root").length > 0;
+        if (isRootSelector) {
+            rootVars = vars;
+            return undefined;
+        }
 
         const tmpDeclaration = {}; // created for turnPropIntoSubproperties
         rule.declarations.forEach((declaration) => {
