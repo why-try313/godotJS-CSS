@@ -3,9 +3,12 @@
 CSS support integration for Godot JavaScript<br/>
 **Note:** Will not work with classic Godot
 
+<img src="https://i.imgur.com/W9mXRZg.jpg"/><br/><br/>
+
 ### Supported Godot versions:
 - Godot JavaScript 3.x
 - <s>Godot JS 4.x</s> (too unstable for now)
+
 
 <br>
 
