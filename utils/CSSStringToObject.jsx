@@ -1,6 +1,8 @@
 import Parser from "./CSS_Parser.js";
 import Colors from "./CSS_Colors.js";
 import { CSSCursors, defaultMedia } from "./CSS_Constants.jsx";
+import animEasing           from "./CSS_Animation_Easings.js";
+import TransitionsConverter from "./CSS_Animation_TransitionsConverter.js";
 
 const rex = {
     px: /^-?[0-9]+(\.[0-9]+)?px$/,
@@ -161,6 +163,23 @@ const isValidCSSValue = (value, prop, vars) => {
         "box-shadow.size": px,
         "box-shadow.color": color,
         "box-shadow.offset": pxAxis,
+        "transition": (str) => {
+            const props = str.split(/,[\ ]+/g);
+            const value = {};
+            props.forEach((prop) => {
+                const valAndSec = prop.split(/[\ ]+/);
+                const propToAnimate = valAndSec[0];
+                const duration = valAndSec[1];
+                const easing = valAndSec[2] || "linear";
+                const propsToAnimate = TransitionsConverter[propToAnimate];
+                if (propsToAnimate && duration && duration.trim().match(/^[0-9]{0,}\.?[0-9]+s$/) && animEasing[easing]) {
+                    propsToAnimate.forEach((animProp) => {
+                        value[ animProp ] = { time: parseFloat(duration.replace(/^\./, '0.').replace(/s$/, "")), easing };
+                    });
+                }
+            });
+            return Object.keys(value).length > 0 ? value : undefined;
+        },
         // background-color
         // box-shadow      -- separator = space
         // border          -- separator = space

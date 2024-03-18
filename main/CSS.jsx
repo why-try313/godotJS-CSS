@@ -34,6 +34,7 @@ export default class CSS extends godot.Panel {
     #inline_css  = "";
     #waitFrames  = 0; // Avoids bulk events on states changes, MIN_FRAMES by default
     #firstStateLoaded = false; // Trigger to avoid animation on first CSS render
+    #isReload    = false;
 
     constructor() {
         super();
@@ -97,30 +98,17 @@ export default class CSS extends godot.Panel {
         });
 
         // hover
-        this.connect("mouse_entered", this, "onMouse", [true]);
-        this.connect("mouse_exited",  this, "onMouse", [false]);
+        this.connect("mouse_entered", () => { this.#mouseEvent.hover = true;  this.#setState(); });
+        this.connect("mouse_exited",  () => { this.#mouseEvent.hover = false; this.#setState(); });
         // Keypad hover
-        this.connect("focus_entered", this, "onFocus", [true]);
-        this.connect("focus_exited",  this, "onFocus", [false]);
+        this.connect("focus_entered", () => { this.#mouseEvent.focus = true;  this.#setState(); });
+        this.connect("focus_exited",  () => { this.#mouseEvent.focus = false; this.#setState(); });
 
         // mouse clicks, mousedown AND mouseup
-        this.connect("gui_input", this, "onInput");
-    }
-
-
-    onMouse(state) {
-        this.#mouseEvent.hover = state;
-        this.#setState(state ? "mouse_entered" : "mouse_leave");
-    }
-
-    onFocus(state) {
-        this.#mouseEvent.focus = state;
-        this.#setState(state ? "focus_entered" : "focus_leave");
-    }
-
-    onInput(event) {
-        if (event.__class__ !== "InputEventMouseButton" || event.button_index !== 1) return;
-        this.#mouseEvent.active = event.pressed; this.#setState("gui_input");
+        this.connect("gui_input", (event) => {
+            if (event.__class__ !== "InputEventMouseButton" || event.button_index !== 1) return;
+            this.#mouseEvent.active = event.pressed; this.#setState();
+        });
     }
 
 
@@ -265,6 +253,7 @@ export default class CSS extends godot.Panel {
 
     #reloadState() {
         if (this.#currentStateName !== "init" && this.#states[ this.#currentStateName ]) {
+            this.#isReload = true;
             this.#setNextStateValues(this.#states[ this.#currentStateName ], this.#currentStateName);
         }
     }
@@ -361,7 +350,11 @@ export default class CSS extends godot.Panel {
             style: this.#style
         };
 
-        const animates = this.#firstStateLoaded ? { "margin_left": 1.2, "margin_right": 1.2, "anchor_left": 1.2, "anchor_right": 1.2 } : {};
+        const animates = this.#firstStateLoaded ? {
+            "margin_left": { time: 1.2, easing: "ease-out-elastic" }, "margin_right": { time: 1.2, easing: "ease-out-elastic" },
+            "anchor_left": { time: 1.2, easing: "ease-out-elastic" }, "anchor_right": { time: 1.2, easing: "ease-out-elastic" },
+            "bg_color": { time: 0.2, easing: "linear" },
+        } : {};
         this.hasAnimation = false;
         this.animations = [];
 
@@ -388,7 +381,7 @@ export default class CSS extends godot.Panel {
             [ "style",    Vector2, [ "shadow_offset" ] ],
         ].forEach((def) => {
             const sourceName = def[0];  const method     = def[1];
-            const allProps   = def[2];
+            const allProps   = def[2];  const methodName = method.name;
             /*const methodName = method.name;*/
 
             const source  = sourceName ? nextState[ sourceName ] : nextState;
@@ -398,10 +391,11 @@ export default class CSS extends godot.Panel {
             allProps.forEach((prop) => {
                 if (typeof source[prop] === "undefined") return;
                 const nextValue = source[ prop ];
+                const path = sourceName ? sourceName+"."+prop : prop;
                 if (typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue) {
-                    if (this.#firstStateLoaded && animates[ prop ]) {
+                    if (!this.#isReload  && this.#firstStateLoaded && animates[ path ]) {
                         this.hasAnimation = true;
-                        const anim = new Animation(kurrent[ prop ] || 0, nextValue, applyTo, animates[ prop ], prop, "Apply", "ease-out-elastic");
+                        const anim = new Animation(kurrent[ prop ] || 0, nextValue, applyTo, animates[ path ].time, prop, methodName, animates[ path ].easing);
                         this.animations.push(anim);
                     } else {
                         const val = method(nextValue);
@@ -412,6 +406,7 @@ export default class CSS extends godot.Panel {
             });
         });
 
+        this.#isReload = false;
         this.#firstStateLoaded = true;
         this.#currentState = nextState;
         this.#currentStateName  = name;

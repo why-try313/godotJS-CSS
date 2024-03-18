@@ -11,13 +11,8 @@ class Animation {
         this.easing = animEasing[ easingName ];
         if (!this.easing) throw new Error(`Cannot find easing "${ easingName }"`);
 
-        const current  = this.target[ this.prop ] || 0;
-        this.ended     = !this.value.isValid() || (duration <= 0);
-
-        let percent = (current-from)/(to-from);
-        if (percent < 0) { percent = 0; }
-        else if (percent > 1) { percent = 1; }
-        this.enlapsed = percent*this.duration;
+        this.ended    = !this.value.isValid() || (duration <= 0);
+        this.enlapsed = this.value.getPercent(from, to, this.target[ this.prop ] || 0)*this.duration;
     }
 
     play(delta) {
