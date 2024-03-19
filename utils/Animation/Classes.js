@@ -30,6 +30,11 @@ class Vector2 {
         return this.value;
     } isValid() {
         return (Math.abs(this.diff.x)+Math.abs(this.diff.y)) !== 0;
+    } getPercent(from, to, current) {
+        const c = current.x + current.y;
+        const f = from.x + from.y;
+        const t = to.x + to.y;
+        return (c-f)/(t-f);
     }
 };
 

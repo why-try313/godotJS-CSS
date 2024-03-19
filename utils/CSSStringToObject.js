@@ -1,8 +1,8 @@
 import Parser from "./CSS_Parser.js";
 import Colors from "./CSS_Colors.js";
-import { CSSCursors, defaultMedia } from "./CSS_Constants.jsx";
-import animEasing           from "./CSS_Animation_Easings.js";
-import TransitionsConverter from "./CSS_Animation_TransitionsConverter.js";
+import { CSSCursors, defaultMedia } from "./CSS_Constants.js";
+import animEasing           from "./Animation/Easings.js";
+import TransitionsConverter from "./Animation/TransitionsConverter.js";
 
 const rex = {
     px: /^-?[0-9]+(\.[0-9]+)?px$/,

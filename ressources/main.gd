@@ -5,17 +5,9 @@ var css_import_plugin
 
 func _enter_tree():
     add_custom_type("Div", "Panel", load("res://addons/godotJS-CSS/main/CSS.jsx"), preload("../icons/icon16.png"))
-    # css_import_plugin = preload("css-importer.gd").new()
+    # css_import_plugin = preload("./css-importer.gd").new()
     # add_import_plugin(css_import_plugin)
 
 func _exit_tree():
     # remove_import_plugin(css_import_plugin)
     remove_custom_type("Div")
-
-
-# func _process(delta):
-#     if (delt > 2):
-#         print(delt)
-#         delt = delta
-#     else:
-#         delt = delt+delta

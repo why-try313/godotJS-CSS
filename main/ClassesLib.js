@@ -1,4 +1,4 @@
-import CSStringToObject from "../utils/CSSStringToObject.jsx";
+import CSStringToObject from "../utils/CSSStringToObject.js";
 import { log, getFile, fileExists, FileWatch } from "../utils/utils.js";
 
 class ClassesLib {

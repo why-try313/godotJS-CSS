@@ -1,7 +1,7 @@
 // import CSStringToObject from "./Utils/CSSStringToObject.jsx";
-import { INITIAL_STATE, MOUSE_FILTER, GDCursors }  from "../utils/CSS_Constants.jsx";
-import Lib       from "./ClassesLib.jsx";
-import Animation from "../utils/CSS_Animation.js";
+import { INITIAL_STATE, MOUSE_FILTER, GDCursors }  from "../utils/CSS_Constants.js";
+import Lib       from "./ClassesLib.js";
+import Animation from "../utils/Animation/index.js";
 import Shader    from "../ressources/CSS_shader.gdshader";
 import ShaderMat from "../ressources/CSS_material.tres";
 // import { log } from "./Utils/utils.js";
@@ -180,11 +180,14 @@ export default class CSS extends godot.Panel {
             };
         });
         this.#states = rules;
-        const inheritFromDefault = [
+        const inheritFromDefault = [ // Set defaults to other states
             "transform.translate",
             "background-color",
             "border-radius",
-            "opacity"
+            "opacity",
+        ];
+        const customMergers = [ // Merge objects with [ target ] priority 
+            "transition"
         ];
         const otherStates = Object.keys(this.#states).filter(e => e !== "_default");
         if (this.#states._default) {
@@ -195,6 +198,14 @@ export default class CSS extends godot.Panel {
                         if (typeof this.#states[ state ][ prop ] === "undefined") {
                             this.#states[ state ][ prop ] = this.#states._default[prop];
                         }
+                    });
+                }
+            });
+
+            customMergers.forEach((prop) => {
+                if (this.#states._default[prop]) {
+                    otherStates.forEach((state) => {
+                        this.#states[ state ][ prop ] = { ...this.#states._default[prop], ...(this.#states[ state ][ prop ] || {}) };
                     });
                 }
             });
@@ -235,7 +246,7 @@ export default class CSS extends godot.Panel {
     }
 
 
-    #setState(name) {
+    #setState() {
         if (this.#waitFrames > 0)  return;
         this.#waitFrames = MIN_FRAMES;
 
@@ -334,6 +345,7 @@ export default class CSS extends godot.Panel {
                 if (nextState[ prop ]) { applyValues[prop](prop); }
             });
             // log({ ...cs, name: this.name }, null, 4);
+            cs.transition = nextState.transition || {};
             this.#applyCurrentState(cs, name);
         } else {
             this.visible = false;
@@ -350,11 +362,7 @@ export default class CSS extends godot.Panel {
             style: this.#style
         };
 
-        const animates = this.#firstStateLoaded ? {
-            "margin_left": { time: 1.2, easing: "ease-out-elastic" }, "margin_right": { time: 1.2, easing: "ease-out-elastic" },
-            "anchor_left": { time: 1.2, easing: "ease-out-elastic" }, "anchor_right": { time: 1.2, easing: "ease-out-elastic" },
-            "bg_color": { time: 0.2, easing: "linear" },
-        } : {};
+        const animates = this.#firstStateLoaded ? nextState.transition : {};
         this.hasAnimation = false;
         this.animations = [];
 
@@ -392,10 +400,11 @@ export default class CSS extends godot.Panel {
                 if (typeof source[prop] === "undefined") return;
                 const nextValue = source[ prop ];
                 const path = sourceName ? sourceName+"."+prop : prop;
-                if (typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue) {
-                    if (!this.#isReload  && this.#firstStateLoaded && animates[ path ]) {
+                // this.#isReload -> force reload even is values are the same
+                if (this.#isReload || typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue) {
+                    if (!godot.Engine.editor_hint && !this.#isReload  && this.#firstStateLoaded && animates[ path ]) {
                         this.hasAnimation = true;
-                        const anim = new Animation(kurrent[ prop ] || 0, nextValue, applyTo, animates[ path ].time, prop, methodName, animates[ path ].easing);
+                        const anim = new Animation(kurrent[ prop ] || 0, nextValue, applyTo, animates[ path ].time, prop, methodName, animates[ path ].easing, sourceName);
                         this.animations.push(anim);
                     } else {
                         const val = method(nextValue);
