@@ -1,11 +1,13 @@
 // import CSStringToObject from "./Utils/CSSStringToObject.jsx";
-import { INITIAL_STATE, MOUSE_FILTER, GDCursors }  from "./Utils/CSS_Constants.jsx";
-import ShaderMat from "./CSS_material.tres";
-import Shader    from "./CSS_shader.gdshader";
-import Lib       from "./ClassesLib.jsx";
+import { INITIAL_STATE, MOUSE_FILTER, GDCursors }  from "../utils/CSS_Constants.js";
+import Lib       from "./ClassesLib.js";
+import Animation from "../utils/Animation/index.js";
+import Shader    from "../ressources/CSS_shader.gdshader";
+import ShaderMat from "../ressources/CSS_material.tres";
 // import { log } from "./Utils/utils.js";
 
 let applyValuesKeys = null;
+const MIN_FRAMES = 4;
 
 export default class CSS extends godot.Panel {
     // The name of the element on CSS to reference itself
@@ -30,6 +32,9 @@ export default class CSS extends godot.Panel {
     #classString = "";
     #ready       = false;
     #inline_css  = "";
+    #waitFrames  = 0; // Avoids bulk events on states changes, MIN_FRAMES by default
+    #firstStateLoaded = false; // Trigger to avoid animation on first CSS render
+    #isReload    = false;
 
     constructor() {
         super();
@@ -56,6 +61,9 @@ export default class CSS extends godot.Panel {
         this.reload = this.reload.bind(this);
         this.afterReady = this.afterReady.bind(this);
         this.hasFilter = false;
+
+        this.animations = [];
+        this.hasAnimation = false;
 
         this.buildClasses();
     }
@@ -107,8 +115,8 @@ export default class CSS extends godot.Panel {
     _ready() {
         // this.material = this.#material;
         // this.material.resource_local_to_scene = true;
-        this.#onInit();
 
+        this.#onInit();
         this.call_deferred("afterReady");
     }
 
@@ -172,11 +180,14 @@ export default class CSS extends godot.Panel {
             };
         });
         this.#states = rules;
-        const inheritFromDefault = [
+        const inheritFromDefault = [ // Set defaults to other states
             "transform.translate",
             "background-color",
             "border-radius",
-            "opacity"
+            "opacity",
+        ];
+        const customMergers = [ // Merge objects with [ target ] priority 
+            "transition"
         ];
         const otherStates = Object.keys(this.#states).filter(e => e !== "_default");
         if (this.#states._default) {
@@ -187,6 +198,14 @@ export default class CSS extends godot.Panel {
                         if (typeof this.#states[ state ][ prop ] === "undefined") {
                             this.#states[ state ][ prop ] = this.#states._default[prop];
                         }
+                    });
+                }
+            });
+
+            customMergers.forEach((prop) => {
+                if (this.#states._default[prop]) {
+                    otherStates.forEach((state) => {
+                        this.#states[ state ][ prop ] = { ...this.#states._default[prop], ...(this.#states[ state ][ prop ] || {}) };
                     });
                 }
             });
@@ -227,9 +246,12 @@ export default class CSS extends godot.Panel {
     }
 
 
-    #setState(_state = "_default") {
+    #setState() {
+        if (this.#waitFrames > 0)  return;
+        this.#waitFrames = MIN_FRAMES;
+
         if (!this.#ready) return;
-        let state = _state;
+        let state = "_default";
         if (this.#mouseEvent.hover  && this.#states["hover"])  { state = "hover";  }
         if (this.#mouseEvent.focus  && this.#states["focus"])  { state = "focus";  }
         if (this.#mouseEvent.focus  && this.#states["hover"])  { state = "hover";  }
@@ -242,6 +264,7 @@ export default class CSS extends godot.Panel {
 
     #reloadState() {
         if (this.#currentStateName !== "init" && this.#states[ this.#currentStateName ]) {
+            this.#isReload = true;
             this.#setNextStateValues(this.#states[ this.#currentStateName ], this.#currentStateName);
         }
     }
@@ -322,6 +345,7 @@ export default class CSS extends godot.Panel {
                 if (nextState[ prop ]) { applyValues[prop](prop); }
             });
             // log({ ...cs, name: this.name }, null, 4);
+            cs.transition = nextState.transition || {};
             this.#applyCurrentState(cs, name);
         } else {
             this.visible = false;
@@ -337,6 +361,11 @@ export default class CSS extends godot.Panel {
             material: this.material,
             style: this.#style
         };
+
+        const animates = this.#firstStateLoaded ? nextState.transition : {};
+        this.hasAnimation = false;
+        this.animations = [];
+
         const Apply   = (value) => value;
         const Vector2 = (value) => new godot.Vector2(value.x, value.y);
         const Color   = (value) => new godot.Color(...value);
@@ -360,7 +389,8 @@ export default class CSS extends godot.Panel {
             [ "style",    Vector2, [ "shadow_offset" ] ],
         ].forEach((def) => {
             const sourceName = def[0];  const method     = def[1];
-            const allProps   = def[2];
+            const allProps   = def[2];  const methodName = method.name;
+            /*const methodName = method.name;*/
 
             const source  = sourceName ? nextState[ sourceName ] : nextState;
             const kurrent = sourceName ? current[ sourceName ]   : current;
@@ -369,14 +399,24 @@ export default class CSS extends godot.Panel {
             allProps.forEach((prop) => {
                 if (typeof source[prop] === "undefined") return;
                 const nextValue = source[ prop ];
-                if (typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue) {
-                    const val = method(nextValue);
-                    if (sourceName === "material") { applyTo.set_shader_param(prop, val); }
-                    else { applyTo[ prop ] = val; }
+                const path = sourceName ? sourceName+"."+prop : prop;
+                // this.#isReload -> force reload even is values are the same
+                if (this.#isReload || typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue) {
+                    if (!godot.Engine.editor_hint && !this.#isReload  && this.#firstStateLoaded && animates[ path ]) {
+                        this.hasAnimation = true;
+                        const anim = new Animation(kurrent[ prop ] || 0, nextValue, applyTo, animates[ path ].time, prop, methodName, animates[ path ].easing, sourceName);
+                        this.animations.push(anim);
+                    } else {
+                        const val = method(nextValue);
+                        if (sourceName === "material") { applyTo.set_shader_param(prop, val); }
+                        else { applyTo[ prop ] = val; }
+                    }
                 }
             });
         });
 
+        this.#isReload = false;
+        this.#firstStateLoaded = true;
         this.#currentState = nextState;
         this.#currentStateName  = name;
     }
@@ -393,6 +433,13 @@ export default class CSS extends godot.Panel {
             this.#reloadState();
             this.#timeLastRender = 0;
             this.#pendingRender = false;
+        }
+
+        if (this.#waitFrames > 0) { this.#waitFrames = this.#waitFrames - 1; }
+
+        if (this.hasAnimation) {
+            this.animations = this.animations.map(anim => { anim.play(delta); return anim; }).filter(anim => !anim.ended);
+            this.hasAnimation = this.animations.length > 0;
         }
     }
 

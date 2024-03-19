@@ -1,5 +1,5 @@
-import CSStringToObject from "./Utils/CSSStringToObject.jsx";
-import { log, getFile, fileExists, FileWatch } from "./Utils/utils.js";
+import CSStringToObject from "../utils/CSSStringToObject.js";
+import { log, getFile, fileExists, FileWatch } from "../utils/utils.js";
 
 class ClassesLib {
     #rootFolder = "res://css";
