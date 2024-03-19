@@ -308,18 +308,17 @@ export default class CSS extends godot.Panel {
 
         const applyValues = {
         //  this    <----- p stands for prop, aka this (see arrow to left)
-            "left":       (p) => { cs.margin_left   = Val(p); },
-            "top":        (p) => { cs.margin_top    = Val(p); },
-            "width":      (p) => { const val = Val(p); cs.margin_right  = cs.margin_left + val; cs.width = val; },
-            "right":      (p) => { const val = Val(p); if (nextState.left) { cs.width = p_x - (cs.margin_left+val); } else if (nextState.width) { cs.margin_left = p_x - (cs.width+val); } cs.margin_right = cs.margin_left+cs.width; },
-            "height":     (p) => { const val = Val(p); cs.margin_bottom = cs.margin_top + val; cs.height = val; },
-            "bottom":     (p) => { const val = Val(p); if (nextState.top) { cs.height = p_y - (cs.margin_top+val); } else if (nextState.height) { cs.margin_top = p_y - (cs.height+val); } cs.margin_bottom = cs.margin_top+cs.height; },
-            // "bottom":     (p) => { const val = Val(p); cs.height = p_y-(cs.margin_top + val); cs.margin_bottom = cs.margin_top+cs.height; },
+            "left":       (p) => { const val = Val(p)/p_x; cs.anchor_right = cs.anchor_left = val; },
+            "top":        (p) => { const val = Val(p)/p_y; cs.anchor_top = cs.anchor_bottom = val; },
+            "width":      (p) => { const val = Val(p); cs.margin_left = 0; cs.margin_right + val; cs.width = val; },
+            "right":      (p) => {const val = Val(p); if (nextState.left) { cs.width = p_x - (Val("left")+val); cs.margin_right = cs.width; } else if (nextState.width) { cs.anchor_right = cs.anchor_left = (p_x-(val+cs.width))/p_x; } cs.margin_right = cs.width; },
+            "height":     (p) => { const val = Val(p); cs.margin_top = 0; cs.margin_bottom + val; cs.height = val; },
+            "bottom":     (p) => {const val = Val(p); if (nextState.top) { cs.height = p_y - (Val("top")+val); cs.margin_bottom = cs.height; } else if (nextState.height) { cs.anchor_top = cs.anchor_bottom = (p_y-(val+cs.height))/p_y; } cs.margin_bottom = cs.height; },
 
-            "max-width":  (p) => { const val = Val(p); if (cs.width  > val) { cs.margin_right = cs.margin_left + val; cs.width  = val; } },
-            "min-width":  (p) => { const val = Val(p); if (cs.width  < val) { cs.margin_right = cs.margin_left + val; cs.width  = val; } },
-            "max-height": (p) => { const val = Val(p); if (cs.height > val) { cs.margin_bottom = cs.margin_top + val; cs.height = val; } },
-            "min-height": (p) => { const val = Val(p); if (cs.height < val) { cs.margin_bottom = cs.margin_top + val; cs.height = val; } },
+            "max-width":  (p) => { const val = Val(p); if (cs.width  > val) { cs.margin_right = val; cs.width  = val; } },
+            "min-width":  (p) => { const val = Val(p); if (cs.width  < val) { cs.margin_right = val; cs.width  = val; } },
+            "max-height": (p) => { const val = Val(p); if (cs.height > val) { cs.margin_bottom = val; cs.height = val; } },
+            "min-height": (p) => { const val = Val(p); if (cs.height < val) { cs.margin_bottom = val; cs.height = val; } },
 
             "opacity":    (p) => { cs.modulate = [ 1.0, 1.0, 1.0, Val(p) ]; },
             "cursor":     (p) => { cs.mouse_default_cursor_shape = GDCursors[ nextState[p] ]; },
@@ -329,7 +328,7 @@ export default class CSS extends godot.Panel {
             "border-color":         (p) => { cs.style.border_color = nextState[ p ]; },
 
             "transform.scale":      (p) => { cs.rect_scale = nextState[p]; },
-            "transform.translate":  (p) => { const val = nextState[p]; cs.anchor_left = cs.anchor_right = (cs.width*val.x) /p_x; cs.anchor_top = cs.anchor_bottom = (cs.height*val.y) /p_y; },
+            "transform.translate":  (p) => { const val = nextState[p]; cs.margin_left = cs.width*val.x; cs.margin_right = cs.width*(1+val.x); cs.margin_top = cs.height*val.y; cs.margin_bottom = cs.height*(1+val.y); },
             "transform-origin":     (p) => { const val = nextState[p]; cs.rect_pivot_offset = { x: Math.round(cs.width*val.x), y: Math.round(cs.height*val.y) }; },
             "backdrop-filter.blur": (p) => { cs.material[ "blur_amount" ] = parseFloat(Val(p) ? Val(p)/2 : 0); },
             "box-shadow.size":      (p) => { cs.style.shadow_size   = Val(p); },
@@ -401,7 +400,7 @@ export default class CSS extends godot.Panel {
                 const nextValue = source[ prop ];
                 const path = sourceName ? sourceName+"."+prop : prop;
                 // this.#isReload -> force reload even is values are the same
-                if (this.#isReload || typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue) {
+                if (this.#isReload || (typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue)) {
                     if (!godot.Engine.editor_hint && !this.#isReload  && this.#firstStateLoaded && animates[ path ]) {
                         this.hasAnimation = true;
                         const anim = new Animation(kurrent[ prop ] || 0, nextValue, applyTo, animates[ path ].time, prop, methodName, animates[ path ].easing, sourceName);
