@@ -34,7 +34,6 @@ export default class CSS extends godot.Panel {
     #inline_css  = "";
     #waitFrames  = 0; // Avoids bulk events on states changes, MIN_FRAMES by default
     #firstStateLoaded = false; // Trigger to avoid animation on first CSS render
-    #isReload    = false;
 
     constructor() {
         super();
@@ -265,13 +264,12 @@ export default class CSS extends godot.Panel {
 
     #reloadState() {
         if (this.#currentStateName !== "init" && this.#states[ this.#currentStateName ]) {
-            this.#isReload = true;
-            this.#setNextStateValues(this.#states[ this.#currentStateName ], this.#currentStateName);
+            this.#setNextStateValues(this.#states[ this.#currentStateName ], this.#currentStateName, true);
         }
     }
 
 
-    #setNextStateValues(_nextState, name) {
+    #setNextStateValues(_nextState, name, isReload) {
         let nextState = JSON.parse(JSON.stringify(_nextState));
         const cs = JSON.parse(JSON.stringify(this.#currentState));
         const parent = this.#parent;
@@ -346,14 +344,14 @@ export default class CSS extends godot.Panel {
             });
             // log({ ...cs, name: this.name }, null, 4);
             cs.transition = nextState.transition || {};
-            this.#applyCurrentState(cs, name);
+            this.#applyCurrentState(cs, name, isReload);
         } else {
             this.visible = false;
         }
     }
 
 
-    #applyCurrentState(nextState, name) {
+    #applyCurrentState(nextState, name, isReload) {
         const current=  this.#currentState;
         const methods = {
             // State objects reflect this private values
@@ -401,8 +399,8 @@ export default class CSS extends godot.Panel {
                 const nextValue = source[ prop ];
                 const path = sourceName ? sourceName+"."+prop : prop;
                 // this.#isReload -> force reload even is values are the same
-                if (this.#isReload || (typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue)) {
-                    if (!godot.Engine.editor_hint && !this.#isReload  && this.#firstStateLoaded && animates[ path ]) {
+                if (isReload || (typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue)) {
+                    if (!godot.Engine.editor_hint && !isReload  && this.#firstStateLoaded && animates[ path ]) {
                         this.hasAnimation = true;
                         const anim = new Animation(kurrent[ prop ] || 0, nextValue, applyTo, animates[ path ].time, prop, methodName, animates[ path ].easing, sourceName);
                         this.animations.push(anim);
@@ -415,7 +413,6 @@ export default class CSS extends godot.Panel {
             });
         });
 
-        this.#isReload = false;
         this.#firstStateLoaded = true;
         this.#currentState = nextState;
         this.#currentStateName  = name;
