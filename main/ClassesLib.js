@@ -85,7 +85,10 @@ class ClassesLib {
         // Do not apply recursive imports, style.css should
         // be the only one to import to avoid conflicts
 
-        if (file.indexOf("@import ") < 0) return file;
+        if (file.indexOf("@import ") < 0) {
+            this.fileWatch.files = [ this.#rootFile ];
+            return file;
+        }
         const result = file.split("\n").map((line) => {
             if (line.indexOf("@import") < 0) return line;
 
@@ -106,7 +109,7 @@ class ClassesLib {
             }
         }).join('\n');
 
-        this.fileWatch.files = [ ...Object.keys(imports), this.#rootFile ];
+        this.fileWatch.files = [ ...Object.keys(imports), this.#rootFile ].filter(Boolean);
 
         return result;
     }
