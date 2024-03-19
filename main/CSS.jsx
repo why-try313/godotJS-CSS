@@ -185,6 +185,7 @@ export default class CSS extends godot.Panel {
             "background-color",
             "border-radius",
             "opacity",
+            "right", "bottom",
         ];
         const customMergers = [ // Merge objects with [ target ] priority 
             "transition"
