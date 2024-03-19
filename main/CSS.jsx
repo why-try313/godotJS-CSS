@@ -1,10 +1,8 @@
-// import CSStringToObject from "./Utils/CSSStringToObject.jsx";
 import { INITIAL_STATE, MOUSE_FILTER, GDCursors }  from "../utils/CSS_Constants.js";
 import Lib       from "./ClassesLib.js";
 import Animation from "../utils/Animation/index.js";
 import Shader    from "../ressources/CSS_shader.gdshader";
 import ShaderMat from "../ressources/CSS_material.tres";
-// import { log } from "./Utils/utils.js";
 
 let applyValuesKeys = null;
 const MIN_FRAMES = 4;
@@ -38,7 +36,6 @@ export default class CSS extends godot.Panel {
     constructor() {
         super();
         this.compound = {};
-        // this.classes = []; // To inherit 
         this.classList = {
             contains: (cls)      => this.#classes.indexOf(cls) > -1, 
             add:      (newcls)   => { this.#classes = Array.from(new Set([ ...this.#classes, newcls ])); this.#buildClasses(); }, 
@@ -49,7 +46,6 @@ export default class CSS extends godot.Panel {
 
         const style = new godot.StyleBoxFlat();
         this.#style = style.duplicate();
-        // this.#style.bg_color = new godot.Color(0,1,0,0);
         this.#style.anti_aliasing_size = 0.25;
         this.set('custom_styles/panel', this.#style);
 
@@ -112,9 +108,6 @@ export default class CSS extends godot.Panel {
 
 
     _ready() {
-        // this.material = this.#material;
-        // this.material.resource_local_to_scene = true;
-
         this.#onInit();
         this.call_deferred("afterReady");
     }
@@ -342,7 +335,6 @@ export default class CSS extends godot.Panel {
             applyValuesKeys.forEach((prop) => {
                 if (nextState[ prop ]) { applyValues[prop](prop); }
             });
-            // log({ ...cs, name: this.name }, null, 4);
             cs.transition = nextState.transition || {};
             this.#applyCurrentState(cs, name, isReload);
         } else {
@@ -388,7 +380,6 @@ export default class CSS extends godot.Panel {
         ].forEach((def) => {
             const sourceName = def[0];  const method     = def[1];
             const allProps   = def[2];  const methodName = method.name;
-            /*const methodName = method.name;*/
 
             const source  = sourceName ? nextState[ sourceName ] : nextState;
             const kurrent = sourceName ? current[ sourceName ]   : current;
@@ -398,7 +389,7 @@ export default class CSS extends godot.Panel {
                 if (typeof source[prop] === "undefined") return;
                 const nextValue = source[ prop ];
                 const path = sourceName ? sourceName+"."+prop : prop;
-                // this.#isReload -> force reload even is values are the same
+                // isReload -> force reload even is values are the same
                 if (isReload || (typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue)) {
                     if (!godot.Engine.editor_hint && !isReload  && this.#firstStateLoaded && animates[ path ]) {
                         this.hasAnimation = true;

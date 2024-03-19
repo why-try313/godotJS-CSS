@@ -136,7 +136,7 @@ const isValidCSSValue = (value, prop, vars) => {
     }
 
     const {
-        px, percent, pxOrPercent, color, float,
+        px, pxOrPercent, color, float,
         percentsAxis, pxAxis, floatAxis, directionsAxis
     } = valueValidation;
 
