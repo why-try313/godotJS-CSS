@@ -92,6 +92,8 @@ export default class CSS extends godot.Panel {
             this.#pendingRender = true;
         });
 
+        this.connect("tree_entered", () => { this.reload(); });
+
         // hover
         this.connect("mouse_entered", () => { this.#mouseEvent.hover = true;  this.call_deferred("mouseEvent"); });
         this.connect("mouse_exited",  () => { this.#mouseEvent.hover = false; this.call_deferred("mouseEvent"); });
