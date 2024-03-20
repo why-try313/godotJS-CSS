@@ -152,7 +152,21 @@ export default class CSS extends godot.Panel {
         walker(this);
         // Set in deferred to give it time to draw
         // otherwise parent.rect_size{ x, y } = 0
-        this.#parent = this.get_parent();
+        let parent = null;
+        const root = this.get_tree().edited_scene_root;
+        let cursor = this.get_parent();
+        while(cursor) {
+            if (cursor.rect_size) {
+                parent = cursor;
+                cursor = null;
+            } else if (cursor === root) {
+                cursor = null;
+            } else {
+                cursor = cursor.has_method("get_parent") ? cursor.get_parent() : null;
+            }
+        }
+
+        this.#parent = parent || this.get_parent();
         this.#ready = true;
         this.#loadCSS();
     }
@@ -275,9 +289,9 @@ export default class CSS extends godot.Panel {
     #setNextStateValues(_nextState, name) {
         let nextState = JSON.parse(JSON.stringify(_nextState));
         const cs = JSON.parse(JSON.stringify(this.#currentState));
-        const parent = this.#parent;
-        const p_x = parent.rect_size.x;
-        const p_y = parent.rect_size.y;
+        const parentRect = this.#parent.rect_size ? this.#parent.rect_size : this.get_viewport_rect().size;
+        const p_x = parentRect.x;
+        const p_y = parentRect.y;
 
         // Media Queries
         if (nextState.media) {
