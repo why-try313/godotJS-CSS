@@ -30,6 +30,7 @@ export default class CSS extends godot.Panel {
     #classString = "";
     #ready       = false;
     #inline_css  = "";
+    #isReload    = false;
     #firstStateLoaded = false; // Trigger to avoid animation on first CSS render
 
     constructor() {
@@ -118,6 +119,7 @@ export default class CSS extends godot.Panel {
 
 
     _ready() {
+        this.#isReload = true; // Force first render
         this.#onInit();
         this.call_deferred("afterReady");
     }
@@ -156,7 +158,7 @@ export default class CSS extends godot.Panel {
     }
 
 
-    reload() { this.#buildClasses(); }
+    reload() { this.#isReload = true; this.#buildClasses(); }
     #loadCSS() {
         if (!this.#ready) return;
         this.states = {};
@@ -264,12 +266,13 @@ export default class CSS extends godot.Panel {
 
     #reloadState() {
         if (this.#currentStateName !== "init" && this.#states[ this.#currentStateName ]) {
-            this.#setNextStateValues(this.#states[ this.#currentStateName ], this.#currentStateName, true);
+            this.#isReload = true;
+            this.#setNextStateValues(this.#states[ this.#currentStateName ], this.#currentStateName);
         }
     }
 
 
-    #setNextStateValues(_nextState, name, isReload) {
+    #setNextStateValues(_nextState, name) {
         let nextState = JSON.parse(JSON.stringify(_nextState));
         const cs = JSON.parse(JSON.stringify(this.#currentState));
         const parent = this.#parent;
@@ -310,14 +313,24 @@ export default class CSS extends godot.Panel {
             "left":       (p) => { const val = Val(p)/p_x; cs.anchor_right = cs.anchor_left = val; },
             "top":        (p) => { const val = Val(p)/p_y; cs.anchor_top = cs.anchor_bottom = val; },
             "width":      (p) => { const val = Val(p); cs.margin_left = 0; cs.margin_right + val; cs.width = val; },
-            "right":      (p) => {const val = Val(p); if (nextState.left) { cs.width = p_x - (Val("left")+val); cs.margin_right = cs.width; } else if (nextState.width) { cs.anchor_right = cs.anchor_left = (p_x-(val+cs.width))/p_x; } cs.margin_right = cs.width; },
             "height":     (p) => { const val = Val(p); cs.margin_top = 0; cs.margin_bottom + val; cs.height = val; },
-            "bottom":     (p) => {const val = Val(p); if (nextState.top) { cs.height = p_y - (Val("top")+val); cs.margin_bottom = cs.height; } else if (nextState.height) { cs.anchor_top = cs.anchor_bottom = (p_y-(val+cs.height))/p_y; } cs.margin_bottom = cs.height; },
-
             "max-width":  (p) => { const val = Val(p); if (cs.width  > val) { cs.margin_right = val; cs.width  = val; } },
             "min-width":  (p) => { const val = Val(p); if (cs.width  < val) { cs.margin_right = val; cs.width  = val; } },
             "max-height": (p) => { const val = Val(p); if (cs.height > val) { cs.margin_bottom = val; cs.height = val; } },
             "min-height": (p) => { const val = Val(p); if (cs.height < val) { cs.margin_bottom = val; cs.height = val; } },
+            "right":      (p) => {
+                const val = Val(p);
+                if (nextState.left) { cs.width = p_x - (Val("left")+val); cs.margin_right = cs.width; }
+                else if (nextState.width) { cs.anchor_right = cs.anchor_left = (p_x-(val+cs.width))/p_x; }
+                cs.margin_right = cs.width;
+            },
+            "bottom":     (p) => {
+                const val = Val(p);
+                if (nextState.top) { cs.height = p_y - (Val("top")+val); cs.margin_bottom = cs.height; }
+                else if (nextState.height) { cs.anchor_top = cs.anchor_bottom = (p_y-(val+cs.height))/p_y; }
+                cs.margin_bottom = cs.height;
+            },
+
 
             "opacity":    (p) => { cs.modulate = [ 1.0, 1.0, 1.0, Val(p) ]; },
             "cursor":     (p) => { cs.mouse_default_cursor_shape = GDCursors[ nextState[p] ]; },
@@ -343,14 +356,14 @@ export default class CSS extends godot.Panel {
                 if (nextState[ prop ]) { applyValues[prop](prop); }
             });
             cs.transition = nextState.transition || {};
-            this.#applyCurrentState(cs, name, isReload);
+            this.#applyCurrentState(cs, name);
         } else {
             this.visible = false;
         }
     }
 
 
-    #applyCurrentState(nextState, name, isReload) {
+    #applyCurrentState(nextState, name) {
         const current=  this.#currentState;
         const methods = {
             // State objects reflect this private values
@@ -397,8 +410,8 @@ export default class CSS extends godot.Panel {
                 const nextValue = source[ prop ];
                 const path = sourceName ? sourceName+"."+prop : prop;
                 // isReload -> force reload even is values are the same
-                if (isReload || (typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue)) {
-                    if (!godot.Engine.editor_hint && !isReload  && this.#firstStateLoaded && animates[ path ]) {
+                if (this.#isReload || (typeof kurrent[ prop ] === "undefined" || kurrent[ prop ] !== nextValue)) {
+                    if (!godot.Engine.editor_hint && !this.#isReload  && this.#firstStateLoaded && animates[ path ]) {
                         this.hasAnimation = true;
                         const anim = new Animation(kurrent[ prop ] || 0, nextValue, applyTo, animates[ path ].time, prop, methodName, animates[ path ].easing, sourceName);
                         this.animations.push(anim);
@@ -411,6 +424,7 @@ export default class CSS extends godot.Panel {
             });
         });
 
+        this.#isReload = false;
         this.#firstStateLoaded = true;
         this.#currentState = nextState;
         this.#currentStateName  = name;
