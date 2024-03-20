@@ -243,60 +243,64 @@ class ClassesLib {
         // Quick selection of built shortpaths that crawl this.paths to avoid having to crawl
         // all this.paths object - returns an aray of index that match this.paths trail
         const pathsDict = {};
-        (masterSelect.class || []).forEach((id) => { if (this.#shortPaths["."+id]) { pathsDict[JSON.stringify(this.#shortPaths["."+id])] = true; } });
-        (masterSelect.id    || []).forEach((id) => { if (this.#shortPaths["#"+id]) { pathsDict[JSON.stringify(this.#shortPaths["#"+id])] = true; } });
-        const pathsIndexes = Object.keys(pathsDict).map((e) => JSON.parse(e));
+        const injectGroupToDict = (group) => {
+            group.forEach((pathTrail) => {
+                pathsDict[ pathTrail.join(',') ] = true;
+            });
+        };
+        
+        (masterSelect.class || []).forEach((id) => { if (this.#shortPaths["."+id]) { injectGroupToDict(this.#shortPaths["."+id]); } });
+        (masterSelect.id    || []).forEach((id) => { if (this.#shortPaths["#"+id]) { injectGroupToDict(this.#shortPaths["#"+id]); } });
+        const pathsIndexes = Object.keys(pathsDict).map((e) => e.split(',').map(e => parseInt(e)));
 
         // eg: [ [0,1,5,0], [5,2], [1,0,7], ... ]
-        pathsIndexes.forEach((pathGroup) => {
-            pathGroup.forEach((path) => {
-                // A copy of the trail to be popped (.filter(Boolean))
-                let trailCopy = copy(trail);
-                // To identify when masterSelect should be applied
-                const lastIndex = path.length - 1;
+        pathsIndexes.forEach((path) => {
+            // A copy of the trail to be popped (.filter(Boolean))
+            let trailCopy = copy(trail);
+            // To identify when masterSelect should be applied
+            const lastIndex = path.length - 1;
 
-                // Top level tree
-                let cursor = { children: [ ...copy(this.#compounds) ] };
+            // Top level tree
+            let cursor = { children: [ ...copy(this.#compounds) ] };
 
-                const next = (index) => {
-                    cursor = cursor.children[ path[index] ];
-                    if (index === lastIndex) { // Last should be element's selector
-                        const hasCompound = this.#findCompound(masterSelect, cursor.selector);
-                        if (hasCompound && cursor.rules) {
-                            if (!rules[ cursor.rules ]) { rules[ cursor.rules ] = []; }
-                            rules[ cursor.rules ].push(path);
-                            hasRules = true;
-                        }
-                    } else {
-                        let foundCompound = false;
-                        // Keep removing trail elements until
-                        // they match to one of the seletors
-                        // Eg: CSS[ .class1, .class2 ] from Element path[ #id1 > .class1 > #id2 > .class2 ]
-                        // 1. trail = #id1 > .class1 > #id2 > .class2
-                        // 2. trail = .class1 > #id2 > .class2
-                        // 3. next(i++) pass
-                        // 4. trail = #id2 > .class2
-                        // 5. trail = .class2
-                        // 6. End of loop with index === lastIndex
-                        for (var i = 0; i < trail.length; i++) {
-                            const hasCompound = this.#findCompound(trail[i], cursor.selector);
-                            // Remove current anyway as it won't be needed if found
-                            trail[i] = undefined;
-
-                            if (hasCompound) {
-                                foundCompound = hasCompound;
-                                break;
-                            }
-                        }
-
-                        if (foundCompound) {
-                            trailCopy = trail.filter(Boolean);
-                            next(index + 1);
-                        };
+            const next = (index) => {
+                cursor = cursor.children[ path[index] ];
+                if (index === lastIndex) { // Last should be element's selector
+                    const hasCompound = this.#findCompound(masterSelect, cursor.selector);
+                    if (hasCompound && cursor.rules) {
+                        if (!rules[ cursor.rules ]) { rules[ cursor.rules ] = []; }
+                        rules[ cursor.rules ].push(path);
+                        hasRules = true;
                     }
-                };
-                next(0);
-            });
+                } else {
+                    let foundCompound = false;
+                    // Keep removing trail elements until
+                    // they match to one of the seletors
+                    // Eg: CSS[ .class1, .class2 ] from Element path[ #id1 > .class1 > #id2 > .class2 ]
+                    // 1. trail = #id1 > .class1 > #id2 > .class2
+                    // 2. trail = .class1 > #id2 > .class2
+                    // 3. next(i++) pass
+                    // 4. trail = #id2 > .class2
+                    // 5. trail = .class2
+                    // 6. End of loop with index === lastIndex
+                    for (var i = 0; i < trail.length; i++) {
+                        const hasCompound = this.#findCompound(trail[i], cursor.selector);
+                        // Remove current anyway as it won't be needed if found
+                        trail[i] = undefined;
+
+                        if (hasCompound) {
+                            foundCompound = hasCompound;
+                            break;
+                        }
+                    }
+
+                    if (foundCompound) {
+                        trailCopy = trail.filter(Boolean);
+                        next(index + 1);
+                    };
+                }
+            };
+            next(0);
         });
 
         return hasRules ? Object.keys(rules) : [];
