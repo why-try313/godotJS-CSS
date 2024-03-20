@@ -14,14 +14,17 @@ class ClassesLib {
 
     constructor() {
         this.nodeInTree = null;
-        this.fileWatch = new FileWatch(100);
+        this.fileWatch = godot.Engine.is_editor_hint() ? new FileWatch(100) : undefined;
         this.getMainCSSFile = this.getMainCSSFile.bind(this);
-        this.fileWatch.onChange(this.getMainCSSFile);
+        if (this.fileWatch) {
+            console.log("Style watcher enabled, style.css changes will be reflected");
+            this.fileWatch.onChange(this.getMainCSSFile);
+        }
 
         try {
             this.#getMainCSSFile();
         } catch(e) {
-            console.log(e);
+            log(e);
         }
     }
 
@@ -44,7 +47,7 @@ class ClassesLib {
     }
 
     async deferred() {
-        this.fileWatch.setRoot(this.nodeInTree);
+        if (this.fileWatch) { this.fileWatch.setRoot(this.nodeInTree); }
     }
 
     #isSelector(obj) {
@@ -85,7 +88,7 @@ class ClassesLib {
         // Do not apply recursive imports, style.css should
         // be the only one to import to avoid conflicts
 
-        if (file.indexOf("@import ") < 0) {
+        if (this.fileWatch && file.indexOf("@import ") < 0) {
             this.fileWatch.files = [ this.#rootFile ];
             return file;
         }
@@ -109,7 +112,9 @@ class ClassesLib {
             }
         }).join('\n');
 
-        this.fileWatch.files = [ ...Object.keys(imports), this.#rootFile ].filter(Boolean);
+        if (this.fileWatch) {
+            this.fileWatch.files = [ ...Object.keys(imports), this.#rootFile ].filter(Boolean);
+        }
 
         return result;
     }
