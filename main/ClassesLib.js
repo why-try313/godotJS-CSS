@@ -1,6 +1,8 @@
 import CSStringToObject from "../utils/CSSStringToObject.js";
 import { log, getFile, fileExists, FileWatch } from "../utils/utils.js";
 
+const copy = (obj) => JSON.parse(JSON.stringify(obj));
+
 class ClassesLib {
     #rootFolder = "res://css";
     #rootFile = "res://css/style.css";
@@ -73,7 +75,7 @@ class ClassesLib {
             const sourceId      = idSrc.filter(e => idSelectors.indexOf(e) > -1).length;
             const sourceClass   = classSrc.filter(e => classSelectors.indexOf(e) > -1).length;
             const hasClassAndID = sourceId + sourceClass;
-            if (hasClassAndID > 0 && classSelectors.length >= sourceClass && idSelectors.length >= sourceId) {
+            if (hasClassAndID > 0 && classSelectors.length == sourceClass && idSelectors.length == sourceId) {
                 index = i; break;
             }
         }
@@ -170,7 +172,7 @@ class ClassesLib {
         };
 
 
-        compounds.map((paths) => {
+        compounds.forEach((paths) => {
             let cursor = this.#compounds;
             const indexPath = [];
             const maxPath = paths.length - 1;
@@ -241,58 +243,60 @@ class ClassesLib {
         // Quick selection of built shortpaths that crawl this.paths to avoid having to crawl
         // all this.paths object - returns an aray of index that match this.paths trail
         const pathsDict = {};
-        (masterSelect.class || []).forEach((id) => { if (this.#shortPaths["."+id]) { pathsDict[this.#shortPaths["."+id].join(",")] = true; } });
-        (masterSelect.id    || []).forEach((id) => { if (this.#shortPaths["#"+id]) { pathsDict[this.#shortPaths["#"+id].join(",")] = true; } });
-        const pathsIndexes = Object.keys(pathsDict).map((e) => e.split(",").map(n => parseInt(n)));
+        (masterSelect.class || []).forEach((id) => { if (this.#shortPaths["."+id]) { pathsDict[JSON.stringify(this.#shortPaths["."+id])] = true; } });
+        (masterSelect.id    || []).forEach((id) => { if (this.#shortPaths["#"+id]) { pathsDict[JSON.stringify(this.#shortPaths["#"+id])] = true; } });
+        const pathsIndexes = Object.keys(pathsDict).map((e) => JSON.parse(e));
 
         // eg: [ [0,1,5,0], [5,2], [1,0,7], ... ]
-        pathsIndexes.forEach((path) => {
-            // A copy of the trail to be popped (.filter(Boolean))
-            let trailCopy = [ ...trail ];
-            // To identify when masterSelect should be applied
-            const lastIndex = path.length - 1;
+        pathsIndexes.forEach((pathGroup) => {
+            pathGroup.forEach((path) => {
+                // A copy of the trail to be popped (.filter(Boolean))
+                let trailCopy = copy(trail);
+                // To identify when masterSelect should be applied
+                const lastIndex = path.length - 1;
 
-            // Top level tree
-            let cursor = { children: [ ...this.#compounds ] };
+                // Top level tree
+                let cursor = { children: [ ...copy(this.#compounds) ] };
 
-            const next = (index) => {
-                cursor = cursor.children[ path[index] ];
-                if (index === lastIndex) { // Last should be element's selector
-                    const hasCompound = this.#findCompound(masterSelect, cursor.selector);
-                    if (hasCompound && cursor.rules) {
-                        if (!rules[ cursor.rules ]) { rules[ cursor.rules ] = []; }
-                        rules[ cursor.rules ].push(path);
-                        hasRules = true;
-                    }
-                } else {
-                    let foundCompound = false;
-                    // Keep removing trail elements until
-                    // they match to one of the seletors
-                    // Eg: CSS[ .class1, .class2 ] from Element path[ #id1 > .class1 > #id2 > .class2 ]
-                    // 1. trail = #id1 > .class1 > #id2 > .class2
-                    // 2. trail = .class1 > #id2 > .class2
-                    // 3. next(i++) pass
-                    // 4. trail = #id2 > .class2
-                    // 5. trail = .class2
-                    // 6. End of loop with index === lastIndex
-                    for (var i = 0; i < trail.length; i++) {
-                        const hasCompound = this.#findCompound(trail[i], cursor.selector);
-                        // Remove current anyway as it won't be needed if found
-                        trail[i] = undefined;
-
-                        if (hasCompound) {
-                            foundCompound = hasCompound;
-                            break;
+                const next = (index) => {
+                    cursor = cursor.children[ path[index] ];
+                    if (index === lastIndex) { // Last should be element's selector
+                        const hasCompound = this.#findCompound(masterSelect, cursor.selector);
+                        if (hasCompound && cursor.rules) {
+                            if (!rules[ cursor.rules ]) { rules[ cursor.rules ] = []; }
+                            rules[ cursor.rules ].push(path);
+                            hasRules = true;
                         }
-                    }
+                    } else {
+                        let foundCompound = false;
+                        // Keep removing trail elements until
+                        // they match to one of the seletors
+                        // Eg: CSS[ .class1, .class2 ] from Element path[ #id1 > .class1 > #id2 > .class2 ]
+                        // 1. trail = #id1 > .class1 > #id2 > .class2
+                        // 2. trail = .class1 > #id2 > .class2
+                        // 3. next(i++) pass
+                        // 4. trail = #id2 > .class2
+                        // 5. trail = .class2
+                        // 6. End of loop with index === lastIndex
+                        for (var i = 0; i < trail.length; i++) {
+                            const hasCompound = this.#findCompound(trail[i], cursor.selector);
+                            // Remove current anyway as it won't be needed if found
+                            trail[i] = undefined;
 
-                    if (foundCompound) {
-                        trailCopy = trail.filter(Boolean);
-                        next(index + 1);
-                    };
-                }
-            };
-            next(0);
+                            if (hasCompound) {
+                                foundCompound = hasCompound;
+                                break;
+                            }
+                        }
+
+                        if (foundCompound) {
+                            trailCopy = trail.filter(Boolean);
+                            next(index + 1);
+                        };
+                    }
+                };
+                next(0);
+            });
         });
 
         return hasRules ? Object.keys(rules) : [];
@@ -301,10 +305,15 @@ class ClassesLib {
     getRules(path, object) { // Get rules from path
         this.#elements[ object.get_path() ] = object;
 
-        const rules = this.#pathResolver(path);
+        const rules = this.#pathResolver(copy(path));
         let allStyles = {};
-        rules.forEach((rule) => {
-            allStyles = { ...allStyles, ...this.#states[rule] };
+        rules.sort().forEach((rule) => {
+            Object.keys(this.#states[rule]).forEach((state) => {
+                allStyles[state] = {
+                    ...(allStyles[state] || {}),
+                    ...this.#states[rule][state]
+                };
+            });
             // /!\ needs a media merger
         });
         return allStyles;
