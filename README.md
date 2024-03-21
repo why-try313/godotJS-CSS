@@ -33,7 +33,7 @@ CSS support integration for Godot JavaScript<br/>
 - [x] Custom `Div` element to set class/ID/inline-style
 - [x] CSS file parsing - Only on `style.css` as entry point, use `@import` to split files
 - [x] Inline CSS with Div property
-- [x] Hot reload on editor and in-game - will be toggable for in-game in the future and disabled by default
+- [x] Hot reload on editor ~~and in-game~~ - enabled only on editor, a toggle for in-game is planned
 - [x] `:root` variables
 - [x] Direct inheritance: classes tree is applied only identifiers **without** pseudo-classes like `hover` or `focus` - see `Next Features`
 - [x] Properties:
