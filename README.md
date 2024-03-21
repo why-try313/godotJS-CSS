@@ -35,6 +35,7 @@ CSS support integration for Godot JavaScript<br/>
 - [x] Inline CSS with Div property
 - [x] Hot reload on editor and in-game - will be toggable for in-game in the future and disabled by default
 - [x] `:root` variables
+- [x] Direct inheritance: classes tree is applied only identifiers **without** pseudo-classes like `hover` or `focus` - see `Next Features`
 - [x] Properties:
   - **Geometry:** width, height, top, left, bottom, right
   - **Limits:** max-width, max-height, min-width, min-height
@@ -42,20 +43,22 @@ CSS support integration for Godot JavaScript<br/>
   - **Filters:** backdrop-filter
   - **Border:** width, color, radius
   - **Misc:** background-color, opacity, cursor, box-shadow
+  - **Animations:** transition
 
 <br>
 
 ## Next Features
-- [ ] `transition` animations
 - [ ] `calc` values
 - [ ] CSS detection on file creation - to avoid reloading the project on first `style.css` creation
 - [ ] A custom `CSS` element to apply to root to be able to insert other files than `style.css`
 - [ ] Some minor bug fixes
 - [ ] <s>`blur`, not only on background but on content as well</s> - next pass issue won't allow this
+- [ ] Inheritance for pseudo classes: `.myClass:hover .myOtherClass` doesn't work for now but it's planned
 
 <br>
 
 ## Limitations
+- No flow: All objects act as `absolute/fixed` and expects top/left positionning, `inline` and `flex` flow is ignored for now, will be planned if the feature becomes essential
 - For now, only `css/style.css` is acepted as entry point, will be fixed in future
 - Only one `backdrop-filter` allowed as **next-pass shaders** are not integrated
 - backrgound-gradients, related to **next-pass shaders** problem, use gradient as child instead
