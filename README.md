@@ -1,7 +1,7 @@
 # Godot JavaScript CSS integration
 
 CSS support integration for Godot JavaScript<br/>
-**Note:** Will not work with classic Godot
+**Note:** Will not work with classic Godot, you'll need [Godot JavaScript version](https://github.com/Geequlim/ECMAScript)
 
 <img src="https://i.imgur.com/W9mXRZg.jpg"/><br/><br/>
 
@@ -49,6 +49,7 @@ CSS support integration for Godot JavaScript<br/>
 
 ## Next Features
 - [ ] `calc` values
+- [ ] Workflow rewrite
 - [ ] CSS detection on file creation - to avoid reloading the project on first `style.css` creation
 - [ ] A custom `CSS` element to apply to root to be able to insert other files than `style.css`
 - [ ] Some minor bug fixes
