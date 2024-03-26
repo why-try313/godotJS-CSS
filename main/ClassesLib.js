@@ -1,5 +1,5 @@
 import CSStringToObject from "../utils/CSSStringToObject.js";
-import { log, getFile, fileExists, FileWatch } from "../utils/utils.js";
+import { log, getFile, fileExists } from "../utils/utils.js";
 
 const copy = (obj) => JSON.parse(JSON.stringify(obj));
 
@@ -15,13 +15,9 @@ class ClassesLib {
     #elements = {};
 
     constructor() {
+        this.files = [];
         this.nodeInTree = null;
-        this.fileWatch = godot.Engine.is_editor_hint() ? new FileWatch(100) : undefined;
         this.getMainCSSFile = this.getMainCSSFile.bind(this);
-        if (this.fileWatch) {
-            console.log("Style watcher enabled, style.css changes will be reflected");
-            this.fileWatch.onChange(this.getMainCSSFile);
-        }
 
         try {
             this.#getMainCSSFile();
@@ -44,12 +40,7 @@ class ClassesLib {
     init(Node) {
         if (!this.nodeInTree) {
             this.nodeInTree = Node.get_node("/root");
-            this.deferred();
         }
-    }
-
-    async deferred() {
-        if (this.fileWatch) { this.fileWatch.setRoot(this.nodeInTree); }
     }
 
     #isSelector(obj) {
@@ -86,14 +77,16 @@ class ClassesLib {
     // Replace imports by their css file
     #extractImportsOnCSSFile(file) {
         let imports = {};
+        let files = [ this.#rootFile ];
 
         // Do not apply recursive imports, style.css should
         // be the only one to import to avoid conflicts
 
-        if (this.fileWatch && file.indexOf("@import ") < 0) {
-            this.fileWatch.files = [ this.#rootFile ];
+        if (file.indexOf("@import ") < 0) {
+            this.files = files;
             return file;
         }
+
         const result = file.split("\n").map((line) => {
             if (line.indexOf("@import") < 0) return line;
 
@@ -114,10 +107,8 @@ class ClassesLib {
             }
         }).join('\n');
 
-        if (this.fileWatch) {
-            this.fileWatch.files = [ ...Object.keys(imports), this.#rootFile ].filter(Boolean);
-        }
-
+        Object.keys(imports).forEach((path) => { files.push(path) });
+        this.files = files;
         return result;
     }
 
