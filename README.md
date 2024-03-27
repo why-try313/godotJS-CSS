@@ -3,7 +3,7 @@
 CSS support integration for Godot JavaScript<br/>
 **Note:** Will not work with classic Godot, you'll need [Godot JavaScript version](https://github.com/Geequlim/ECMAScript)
 
-<img src="https://i.imgur.com/W9mXRZg.jpg"/><br/><br/>
+<img src="https://i.imgur.com/EAs5xVO.png"/><br/><br/>
 
 ### Supported Godot versions:
 - Godot JavaScript 3.x
