@@ -6,7 +6,7 @@ import TransitionsConverter from "./Animation/TransitionsConverter.js";
 
 const rex = {
     px: /^-?[0-9]+(\.[0-9]+)?px$/,
-    var: /^var\(--[a-zA-Z]+\)$/,
+    var: /var\(--[a-zA-Z]+\)/g,
     float: /^-?[0-9]+(\.[0-9]+)?$/,
     number: /^-?[0-9]+(\.[0-9])?$/,
     percent: /^-?[0-9]+(\.[0-9]+)?%$/,
@@ -93,6 +93,17 @@ const valueValidation = {
         if (res) { res.forEach((num) => { if (num < 0 || num > 1) { hasValuesOverOneOrLessZero = true; } }); }
         if (hasValuesOverOneOrLessZero) { res = undefined; }
         return res;
+    },
+    calc: (calcstr) => {
+        const isCalc = calcstr.match(/^calc\((.*)\);?$/);
+        if (!isCalc || !isCalc[1]) throw new Error(`calc expression failed`);
+        const str = isCalc[1]
+            .replaceAll(/-?[0-9]+(\.[0-9]+)?px/g, (x) => parseFloat(x))
+            .replaceAll(/-?[0-9]+(\.[0-9]+)?%/g, (x) => "$%"+(parseFloat(x)/100)+"$")
+            .split("$").filter(s => s.length > 0);
+        const isSafe = !!str.join("").match(/^[0-9\.\(\)\/\+\-\*\%\ ]+$/);
+        if (!isSafe) throw new Error(`Expression "${ calcstr }" contains unallowed characters`);
+        return str;
     }
 };
 
@@ -132,13 +143,34 @@ const conflictsDeclarations = [
 
 const isValidCSSValue = (value, prop, vars) => {
     if (value.match(rex.var)) {
-        value = vars[ value.replace(/^var\(/, "").replace(/\)$/, "").trim() ];
+        value = value.replaceAll(rex.var, (newVal) => {
+            const name = newVal.replace(/^var\(/, "").replace(/\)$/, "").trim();
+            return typeof vars[ name ] !== "undefined" ? vars[ name ] : newVal;
+        });
     }
 
+    const acceptsCalc = [
+        "width",  "left", "right",  "max-width",  "min-width",
+        "height", "top",  "bottom", "max-height", "min-height"
+    ];
+
     const {
-        px, pxOrPercent, color, float,
+        px, pxOrPercent, color, float, calc,
         percentsAxis, pxAxis, floatAxis, directionsAxis
     } = valueValidation;
+    if (value.indexOf("calc(") === 0) {
+        if (acceptsCalc.indexOf(prop) < 0) {
+            console.log(`property "${ prop }" doesn't accept calc functions`);
+            return 0;
+        }
+        try {
+            const res = calc(value);
+            return { calc: res };
+        } catch(error) {
+            console.log(error);
+            return 0;
+        }
+    }
 
     const transforms = {
         "width":  pxOrPercent,     "height": pxOrPercent,

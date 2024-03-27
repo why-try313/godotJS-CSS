@@ -44,11 +44,14 @@ CSS support integration for Godot JavaScript<br/>
   - **Border:** width, color, radius
   - **Misc:** background-color, opacity, cursor, box-shadow
   - **Animations:** transition
+- [x] Values:
+  - **Units:** `px`, `%`
+  - **Functions:** `calc` (`%` on width, left refers to parent width, height and top to parent height)
+  - **Mixins:** `calc` can be mixed with `var()`, `%` or/and `px`
 
 <br>
 
 ## Next Features
-- [ ] `calc` values
 - [ ] A custom `CSS` element to apply to root to be able to insert other files than `style.css`
 - [ ] Some minor bug fixes
 - [ ] <s>`blur`, not only on background but on content as well</s> - next pass issue won't allow this

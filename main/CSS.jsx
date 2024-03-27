@@ -318,13 +318,15 @@ export default class CSS extends godot.Panel {
         };
 
         const Calc = (cssArray, prop) => {
-            const parentValue = parentPercent[prop] || 0;
+            if (!Array.isArray(cssArray)) return 0;
+            const parentValue = parentPercent[prop] ? parentPercent[prop](1) : 0;
             const str = cssArray.map((s) => s[0] === "%" ? s.replace("%", parentValue+"*") : s).join("");
             return eval(str); // string has been sanitized by the parser
         };
 
         const Val = (prop, sub) => {
             const val = sub ? nextState[prop][sub] : nextState[prop];
+            if (val.calc) { return Calc(val.calc, sub || prop); }
             if (typeof val === "number") return val;
             if (val.p) return parentPercent[prop] ? parentPercent[prop](val.v) : val.v;
             return val.v;
