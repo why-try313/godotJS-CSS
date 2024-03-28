@@ -5,7 +5,7 @@ const CSS  = godot.load("res://addons/godotJS-CSS/main/CSS.jsx");
 const ICON = godot.load("res://addons/godotJS-CSS/icons/icon16.png");
 
 let FILES = {};
-const REFRESH_SEC = 1;
+const REFRESH_SEC = 0.5;
 
 let IS_EDITOR   = godot.Engine.editor_hint;
 let IS_WATCHED  = false;
@@ -23,13 +23,12 @@ export default class Main extends godot.EditorPlugin {
 
 	_ready() {
 		this.toggleWatch = this.toggleWatch.bind(this);
-		this.toggleCustomType = this.toggleCustomType.bind(this);
 	}
 
 	_enter_tree() {
 		css_import_plugin = godot.load("res://addons/godotJS-CSS/ressources/css-importer.gd").new();
 		this.add_import_plugin(css_import_plugin);
-		this.toggleCustomType(true);
+		this.add_custom_type("Div", "Panel", CSS, ICON);
 		this.toggleWatch(true);
 	}
 
@@ -39,7 +38,10 @@ export default class Main extends godot.EditorPlugin {
 		// Should always be one as css/style.css is included
 		Object.keys(FILES).forEach((file) => {
 			if (!File.file_exists(file)) { hasMissing.push(file); }
-			else if (File.get_modified_time(file) !== FILES[file]) { hasChanges.push(file); FILES[file] = File.get_modified_time(file); }
+			else if (File.get_modified_time(file) !== FILES[file]) {
+				this.get_editor_interface().get_resource_filesystem().update_file(file);
+				hasChanges.push(file); FILES[file] = File.get_modified_time(file);
+			}
 		});
 
 		if (hasMissing.length > 0) {
@@ -48,31 +50,36 @@ export default class Main extends godot.EditorPlugin {
 			this.toggleWatch(true);
 		} else if (hasChanges.length > 0) {
 			console.log(`Reloading after ${ hasChanges.join(', ') } changes`);
-			Lib.getMainCSSFile();
+			this.get_editor_interface().get_resource_filesystem().scan();
 		}
 	}
 
-	toggleCustomType(active) {
-		if (active) { this.add_custom_type("Div", "Panel", CSS, ICON); }
-		else { this.remove_custom_type("Div") }
+	loadNewCSS(resources) {
+		let isCSS = false;
+		resources.toString().replace(/^\[/, "").replace(/\]$/, "").split(",").forEach((file) => {
+			if (file.split(".").pop() === "css") { isCSS = true; }
+		});
+		if (isCSS) { Lib.getMainCSSFile(); }
 	}
 
 	toggleWatch(active) {
+		if (!IS_EDITOR) { return false; }
 		const fileSystem  = this.get_editor_interface().get_resource_filesystem();
 		const isConnected = fileSystem.is_connected("sources_changed", this, "toggleWatch");
 		if (!active) {
 			if (isConnected) {
-	    		fileSystem.disconnect("sources_changed", this, "on_sources_changed")
+	    		fileSystem.disconnect("sources_changed", this, "toggleWatch");
 			}
+	    	fileSystem.disconnect("resources_reimported", this, "loadNewCSS");
 			IS_EDITOR  = false;
 			IS_WATCHED = false;
 			return false;
 		}
 
-		if (!IS_EDITOR) { return false; }
 		const hasStyleCss = File.file_exists("res://css/style.css");
 		if (hasStyleCss) {
 			if (!IS_WATCHED) {
+				fileSystem.connect("resources_reimported", this, "loadNewCSS");
 				Lib.getMainCSSFile();
 				const files = {};
 				Lib.files.forEach((file) => { files[ file ] = File.get_modified_time(file); });
@@ -90,7 +97,7 @@ export default class Main extends godot.EditorPlugin {
 	_exit_tree() {
 		this.remove_import_plugin(css_import_plugin);
 		this.toggleWatch(false);
-		this.toggleCustomType(false);
+		this.remove_custom_type("Div");
 	}
 
 	_process(delta) {
