@@ -103,7 +103,7 @@ export default class CSS extends godot.Panel {
 
         // mouse clicks, mousedown AND mouseup
         this.connect("gui_input", (event) => {
-            if (event.__class__ !== "InputEventMouseButton" || event.button_index !== 1) return;
+            if (event.get_class() !== "InputEventMouseButton" || event.button_index !== 1) return;
             this.#mouseEvent.active = event.pressed;
             this.call_deferred("mouseEvent");
         });
@@ -452,6 +452,12 @@ export default class CSS extends godot.Panel {
         this.#firstStateLoaded = true;
         this.#currentState = nextState;
         this.#currentStateName  = name;
+    }
+
+    _exit_tree() {
+        this.material = null;
+        this.#material.shader = null;
+        this.#material = null;
     }
 
     _process(delta) {

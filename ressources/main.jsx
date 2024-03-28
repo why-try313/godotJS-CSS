@@ -1,4 +1,5 @@
 import Lib from "../main/ClassesLib.js";
+
 const File = new godot.File();
 const CSS  = godot.load("res://addons/godotJS-CSS/main/CSS.jsx");
 const ICON = godot.load("res://addons/godotJS-CSS/icons/icon16.png");
@@ -9,6 +10,10 @@ const REFRESH_SEC = 1;
 let IS_EDITOR   = godot.Engine.editor_hint;
 let IS_WATCHED  = false;
 let LAST_UPDATE = 0;
+let css_import_plugin = null;
+const CSSClass = godot.load("res://addons/godotJS-CSS/css_resource.gd");
+// const CSSLoader = godot.load("res://addons/godotJS-CSS/ressources/css_resource_importer.gd");
+// const CSSSaver = godot.load("res://addons/godotJS-CSS/ressources/css_resource_saver.gd");
 
 export default class Main extends godot.EditorPlugin {
 
@@ -22,6 +27,8 @@ export default class Main extends godot.EditorPlugin {
 	}
 
 	_enter_tree() {
+		css_import_plugin = godot.load("res://addons/godotJS-CSS/ressources/css-importer.gd").new();
+		this.add_import_plugin(css_import_plugin);
 		this.toggleCustomType(true);
 		this.toggleWatch(true);
 	}
@@ -81,6 +88,7 @@ export default class Main extends godot.EditorPlugin {
 	}
 
 	_exit_tree() {
+		this.remove_import_plugin(css_import_plugin);
 		this.toggleWatch(false);
 		this.toggleCustomType(false);
 	}
