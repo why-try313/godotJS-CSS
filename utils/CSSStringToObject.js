@@ -4,6 +4,9 @@ import { CSSCursors, defaultMedia } from "./CSS_Constants.js";
 import animEasing           from "./Animation/Easings.js";
 import TransitionsConverter from "./Animation/TransitionsConverter.js";
 
+const allowedUnits     = [ "px", "%", "rem", "vw", "vh", "vmin", "vmax" /* "em", "ex", "ch" */ ];
+// const allowedFunctions = [ "calc", "min", "max" ];
+
 const rex = {
     px: /^-?[0-9]+(\.[0-9]+)?px$/,
     var: /var\(--[a-zA-Z]+\)/g,
@@ -11,6 +14,7 @@ const rex = {
     number: /^-?[0-9]+(\.[0-9])?$/,
     percent: /^-?[0-9]+(\.[0-9]+)?%$/,
     pxOrPercent: /^-?[0-9]+(\.[0-9]+)?(px|%)?$/,
+    units: new RegExp(`^-?[0-9]+(\.[0-9]+)?(${ allowedUnits.join('|') })$`),
 
     hex: /^\#[0-9a-f]{3,8}/i,
     rgb: /^rgb\([\ ]*[0-9]{1,3},[\ ]*[0-9]{1,3},[\ ]*[0-9]{1,3}[\ ]*\)$/i,
@@ -18,11 +22,21 @@ const rex = {
 };
 
 const valueValidation = {
-    px: (value) => {
-        return value.trim().match(rex.px) ? { v: parseFloat(value), p: false } : null;
-    },
     float: (value) => {
         return value.trim().match(rex.float) ? { v: parseFloat(value), p: false } : null;
+    },
+    unit: (_str, forceUnits = [], forceInteger = false) => {
+        if (typeof _str !== "string") return null;
+
+        const str = _str.match(rex.float) ? _str+"px" : _str;
+        const extract = str.trim().replace(/^\;/, "0.").match(rex.units);
+        if (!extract) return null;
+        if (forceUnits.length > 0 && forceUnits.indexOf(extract[2]) < 0) throw new Error(`Only ${ forceUnits.join(', ') } units allowed, ("${ str }" given)`);
+        if (forceInteger && extract[1]) throw new Error(`Floats are not allowed as value, ("${ str }" given)`);
+        return { v: parseFloat(extract[0]), u: extract[2] };
+    },
+    px: (value) => {
+        return value.trim().match(rex.px) ? { v: parseFloat(value), p: false } : null;
     },
     percent: (value) => {
         return value.trim().match(rex.percent) ? { v: parseFloat(value)/100, p: true } : null;
@@ -155,7 +169,7 @@ const isValidCSSValue = (value, prop, vars) => {
     ];
 
     const {
-        px, pxOrPercent, color, float, calc,
+        px, pxOrPercent, color, float, calc, unit,
         percentsAxis, pxAxis, floatAxis, directionsAxis
     } = valueValidation;
     if (value.indexOf("calc(") === 0) {
@@ -173,11 +187,11 @@ const isValidCSSValue = (value, prop, vars) => {
     }
 
     const transforms = {
-        "width":  pxOrPercent,     "height": pxOrPercent,
-        "left":   pxOrPercent,     "right":  pxOrPercent,
-        "top":    pxOrPercent,     "bottom": pxOrPercent,
-        "max-width": pxOrPercent,  "min-width": pxOrPercent,
-        "max-height": pxOrPercent, "min-height": pxOrPercent,
+        "width":  unit,     "height": unit,
+        "left":   unit,     "right":  unit,
+        "top":    unit,     "bottom": unit,
+        "max-width": unit,  "min-width": unit,
+        "max-height": unit, "min-height": unit,
         // transform       -- separator = space
         "transform.translate": percentsAxis,
         "transform.scale": floatAxis,

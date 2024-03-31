@@ -294,6 +294,14 @@ export default class CSS extends godot.Panel {
         const parentRect = this.#parent.rect_size ? this.#parent.rect_size : this.get_viewport_rect().size;
         const p_x = parentRect.x;
         const p_y = parentRect.y;
+        const v_val = {
+            w: p_x * 0.01,
+            h: p_y * 0.01,
+            min: (p_x > p_y ? p_y : p_x) * 0.01,
+            max: (p_x > p_y ? p_x : p_y) * 0.01
+        };
+        // Will be inherited from node tree
+        const fontSize = 16;
 
         // Media Queries
         if (nextState.media) {
@@ -324,11 +332,25 @@ export default class CSS extends godot.Panel {
             return eval(str); // string has been sanitized by the parser
         };
 
+        const Unit = {
+            "%": (val, prop, v) =>  parentPercent[prop] ? parentPercent[prop](val/100) : 0,
+            // "em": (val, prop) => {},
+            // "ex": (val, prop) => {},
+            // "ch": (val, prop) => {},
+            "px": (val) => val,
+            "rem": (val) => val * fontSize,
+            "vw": (val) => val * v_val.w,
+            "vh": (val) => val * v_val.h,
+            "vmin": (val) => val * v_val.min,
+            "vmax": (val) => val * v_val.max,
+        };
+
         const Val = (prop, sub) => {
             const val = sub ? nextState[prop][sub] : nextState[prop];
             if (val.calc) { return Calc(val.calc, sub || prop); }
             if (typeof val === "number") return val;
             if (val.p) return parentPercent[prop] ? parentPercent[prop](val.v) : val.v;
+            if (val.u) return Unit[val.u](val.v, prop, val);
             return val.v;
         };
 
