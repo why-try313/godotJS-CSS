@@ -44,13 +44,13 @@ CSS support integration for Godot JavaScript<br/>
   - **Border:** width, color, radius
   - **Misc:** background-color, opacity, cursor, box-shadow
   - **Animations:** transition of all properties + font-size and color
-- [x] Fonts:
-  - **Import:** `@font-face`, requires `res://` path for `url` and `font-family`
-  - **Properties:** `color`, `font-size` and `font-family`
 - [x] Values:
   - **Units:** `px`, `%`, `em`, `rem`, `vw`, `vh`, `vmin`, `vmax` to match [CSS Relative Lengths](https://www.w3schools.com/cssref/css_units.php) - (`ex` and `ch` ignored)
   - **Functions:** `calc` (`%` on width, left refers to parent width, height and top to parent height)
   - **Mixins:** `calc` can be mixed with `var()`, `%` or/and `px`
+- [x] Fonts:
+  - **Import:** `@font-face`, requires `res://` path for `url` and `font-family`
+  - **Properties:** `color`, `font-size` and `font-family`
 
 <br>
 
