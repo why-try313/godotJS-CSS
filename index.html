@@ -10,10 +10,11 @@
 		body { min-height: 0; height: 100%; padding: 0; margin: 0; font-family: Arial, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Oxygen, Cantarell, sans-serif; color: #454545; }
 		input { font-family: Arial, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Oxygen, Cantarell, sans-serif; color: #454545; }
 		#content {display: block; margin: 0 auto; padding: 45px 0; max-width: 1080px; }
-		table {text-align: left; width: 100%; border-collapse: collapse; border-radius: 7px; overflow: hidden; }
+		table {text-align: left; width: 100%; border-collapse: collapse; border-radius: 7px; overflow: hidden; font-size: 12.7px; }
+		table, input { font-size: 12.7px; }
 		table tr:nth-child(odd) td { background-color: #f8f8f8; }
 		table thead th { background-color: #545454; color: #a5a5a5; }
-		table tr td, table thead th { padding: 10px 0; }
+		table tr td, table thead th { padding: 14px 0; }
 		table tr td.supported { font-weight: bold; color:  #545454; }
 		table tr td:nth-child(1), table thead th:nth-child(1) { padding-left: 15px; }
 		table tr:last-child td { border-bottom: 2px solid #545454; }
@@ -60,7 +61,7 @@
 				<div id="stats" style="text-align: right;"></div>
 				<br>
 				<div id="search">
-					<input type="text" oninput="window.search(event.target.value);" placeholder="Filter propeties...">
+					<input type="text" oninput="window.search(event.target.value);" placeholder="Filter properties...">
 				</div>
 				<br><br>
 				<table id="props">
@@ -165,7 +166,7 @@
 					<td>${ prop.note }</td>
 				</tr>`;
 			});
-			stats.innerHTML = `Supported: <b>${ nbFullySupported }</b>`;
+			stats.innerHTML = `Supported: <b>${ nbFullySupported }</b> / ${ arr.length }`;
 			return res;
 		};
 
