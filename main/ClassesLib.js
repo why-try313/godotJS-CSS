@@ -15,6 +15,7 @@ class ClassesLib {
     #elements = {};
 
     constructor() {
+        this.fonts = {};
         this.files = [];
         this.nodeInTree = null;
         this.getMainCSSFile = this.getMainCSSFile.bind(this);
@@ -116,14 +117,15 @@ class ClassesLib {
         const file  = getFile(this.#rootFile);
         const fileWithImports = this.#extractImportsOnCSSFile(file);
         const rules = this.parseCSS(fileWithImports);
-        if (!rules || Object.keys(rules).length === 0) throw new Error("No rules found");
+        this.fonts = rules.fonts || {};
+        if (!rules || !rules.compounds || Object.keys(rules.compounds).length === 0) throw new Error("No rules found");
 
         this.#states = {};
         this.#compounds = [];
         this.#shortPaths = {};
 
-        const compounds = Object.keys(rules).map((identifier) => {
-            const declaration = rules[ identifier ];
+        const compounds = Object.keys(rules.compounds).map((identifier) => {
+            const declaration = rules.compounds[ identifier ];
             const ID = declaration.ID;
             if (!this.#states[ ID ]) { this.#states[ ID ] = declaration.states; }
             const selectors = identifier.split(/[\ ]+/g);
@@ -191,10 +193,10 @@ class ClassesLib {
     }
 
     parseCSS(str) {
-        let rules = null;
-        try {
-            rules = CSStringToObject(str);
-        } catch(e) { console.log("ERROR", e); }
+        // let rules = null;
+        const rules = CSStringToObject(str);
+        // try {
+        // } catch(e) { console.log("ERROR", e); }
         return rules;
     }
 
