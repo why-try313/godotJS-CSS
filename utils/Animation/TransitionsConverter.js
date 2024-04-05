@@ -19,4 +19,6 @@ export default {
 	"border": [ "border_width_left", "border_width_right", "border_width_top", "border_width_bottom", "style.border_color", ],
 	"border-size": [ "border_width_left", "border_width_right", "border_width_top", "border_width_bottom", ],
 	"border-color": [ "style.border_color" ],
+	"color": [ "font.color" ],
+	"font-size": [ "font.size" ],
 };

@@ -3,8 +3,9 @@ import Colors from "./CSS_Colors.js";
 import { CSSCursors, defaultMedia } from "./CSS_Constants.js";
 import animEasing           from "./Animation/Easings.js";
 import TransitionsConverter from "./Animation/TransitionsConverter.js";
+import { fileExists } from "./utils.js";
 
-const allowedUnits     = [ "px", "%", "rem", "vw", "vh", "vmin", "vmax" /* "em", "ex", "ch" */ ];
+const allowedUnits     = [ "px", "%", "rem", "vw", "vh", "vmin", "vmax", "em", "ex", "ch" ];
 // const allowedFunctions = [ "calc", "min", "max" ];
 
 const rex = {
@@ -209,6 +210,11 @@ const isValidCSSValue = (value, prop, vars) => {
         "box-shadow.size": px,
         "box-shadow.color": color,
         "box-shadow.offset": pxAxis,
+
+        "color": color,
+        "font-family": (str) => typeof str === "string" ? str : null,
+        "font-size": px,
+
         "transition": (str) => {
             const props = str.split(/,[\ ]+/g);
             const value = {};
@@ -364,13 +370,57 @@ const extractRules = (rulesArray) => {
     }).filter(Boolean);
 };
 
+
+const extractFonts = (fontsDeclarationsArray) => {
+    const allFonts     = {};
+    const declarations = [];
+
+    fontsDeclarationsArray.forEach((rule) => {
+        if (!rule || !rule.declarations || rule.declarations.length === 0) return;
+        const declaration = {};
+        let isDeclared = false;
+        rule.declarations.forEach((ruleDeclaration) => {
+            if (ruleDeclaration.property && ruleDeclaration.value) {
+                isDeclared = true;
+                declaration[ ruleDeclaration.property ] = ruleDeclaration.value;
+            }
+        });
+        if (isDeclared) { declarations.push(declaration); }
+    });
+
+    declarations.forEach((declaration) => {
+        if (declaration["font-family"] && declaration.src) {
+            const source = declaration.src.replace(/^url\(/, '').replace(/\)$/, '').replaceAll('"', "");
+            if (!fileExists(source)) {
+                console.log(`Unable to find font ${ declaration["font-family"] } at source ${ source }`);
+            } else {
+                const newFont = new godot.DynamicFont();
+                newFont.font_data = godot.load(source);
+                allFonts[ declaration["font-family"] ] = newFont;
+            }
+        }
+    });
+
+    return allFonts;
+};
+
+
 const CSStringToObject = (str) => {
     const css = Parser(str);
     if (!css || !css.stylesheet || !css.stylesheet.rules) return;
+    const allRules  = [];
+    const allMedias = [];
+    const allFonts  = [];
 
-    const allRules  = css.stylesheet.rules.filter(rule => rule.type === "rule" && rule.declarations && rule.declarations.length > 0);
-    const allMedias = css.stylesheet.rules.filter(rule => rule.type === "media" && rule.rules && rule.rules.length > 0);
-    if (allRules.length === 0) return;
+    css.stylesheet.rules.forEach((rule) => {
+        if (rule.type === "rule" && rule.declarations && rule.declarations.length > 0) {
+            allRules.push(rule);
+        } else if (rule.type === "media" && rule.rules && rule.rules.length > 0) {
+            allMedias.push(rule);
+        } else if (rule.type === "font-face" && rule.declarations && rule.declarations.length > 0) {
+            allFonts.push(rule);
+        }
+    });
 
     const classes = {};
     const defaultState = {
@@ -434,7 +484,7 @@ const CSStringToObject = (str) => {
     });
 
 
-    return classes;
+    return { compounds: classes, fonts: extractFonts(allFonts) };
 };
 
 export default CSStringToObject;
