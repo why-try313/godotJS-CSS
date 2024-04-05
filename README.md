@@ -60,7 +60,6 @@ CSS support integration for Godot JavaScript<br/>
 - [x] Dropped: <s>`blur`, not only on background but on content as well</s> - next pass issue won't allow this
 - [x] Dropped: <s>`ex` and `ch` units</s> - DynamicFont properties won't allow this
 - [ ] Inheritance for pseudo classes: `.myClass:hover .myOtherClass` doesn't work for now but it's planned
-- [ ] Font integration
 - [ ] Calculus Functions: `min`, `max` (completing `var` and `calc`) to match [CSS Functions](https://www.w3schools.com/cssref/css_functions.php) 
 
 <br>
