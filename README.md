@@ -9,6 +9,9 @@ CSS support integration for Godot JavaScript<br/>
 - Godot JavaScript 3.x
 - <s>Godot JS 4.x</s> (too unstable for now)
 
+### Documentation:
+- You can head to the `github-page` of this project to filter all supported properties: [GodotJS CSS addon documentation](https://why-try313.github.io/godotJS-CSS/)
+
 
 <br>
 
