@@ -43,9 +43,12 @@ CSS support integration for Godot JavaScript<br/>
   - **Filters:** backdrop-filter
   - **Border:** width, color, radius
   - **Misc:** background-color, opacity, cursor, box-shadow
-  - **Animations:** transition
+  - **Animations:** transition of all properties + font-size and color
+- [x] Fonts:
+  - **Import:** `@import`, requires `res://` path for `url` and `font-family`
+  - **Properties:** `color`, `font-size` and `font-family`
 - [x] Values:
-  - **Units:** `px`, `%`, `rem`, `vw`, `vh`, `vmin`, `vmax` to match [CSS Relative Lengths](https://www.w3schools.com/cssref/css_units.php)
+  - **Units:** `px`, `%`, `em`, `rem`, `vw`, `vh`, `vmin`, `vmax` to match [CSS Relative Lengths](https://www.w3schools.com/cssref/css_units.php) - (`ex` and `ch` ignored)
   - **Functions:** `calc` (`%` on width, left refers to parent width, height and top to parent height)
   - **Mixins:** `calc` can be mixed with `var()`, `%` or/and `px`
 
@@ -55,9 +58,9 @@ CSS support integration for Godot JavaScript<br/>
 - [ ] A custom `CSS` element to apply to root to be able to insert other files than `style.css`
 - [ ] Some minor bug fixes
 - [x] Dropped: <s>`blur`, not only on background but on content as well</s> - next pass issue won't allow this
+- [x] Dropped: <s>`ex` and `ch` units</s> - DynamicFont properties won't allow this
 - [ ] Inheritance for pseudo classes: `.myClass:hover .myOtherClass` doesn't work for now but it's planned
 - [ ] Font integration
-- [ ] Units: `em`, `ex`, `ch` - waiting for `font` intergrations as they are related
 - [ ] Calculus Functions: `min`, `max` (completing `var` and `calc`) to match [CSS Functions](https://www.w3schools.com/cssref/css_functions.php) 
 
 <br>
