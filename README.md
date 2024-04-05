@@ -67,5 +67,5 @@ CSS support integration for Godot JavaScript<br/>
 ## Limitations
 - No flow: All objects act as `absolute/fixed` and expects top/left positionning, `inline` and `flex` flow is ignored for now, will be planned if the feature becomes essential
 - For now, only `css/style.css` is acepted as entry point, will be fixed in future
-- Only one `backdrop-filter` allowed as **next-pass shaders** are not integrated
-- backrgound-gradients, related to **next-pass shaders** problem, use gradient as child instead
+- Only one `backdrop-filter` allowed as [**next-pass shaders**](https://github.com/godotengine/godot/issues/64873) are not integrated
+- backrgound-gradients, related to [**next-pass shaders**](https://github.com/godotengine/godot/issues/64873) problem, use gradient as child instead
