@@ -56,7 +56,7 @@ CSS support integration for Godot JavaScript<br/>
 
 ## Next Features
 - [ ] A custom `CSS` element to apply to root to be able to insert other files than `style.css`
-- [ ] Some minor bug fixes
+- [ ] Code readability and performance optimizations
 - [x] Dropped: <s>`blur`, not only on background but on content as well</s> - next pass issue won't allow this
 - [x] Dropped: <s>`ex` and `ch` units</s> - DynamicFont properties won't allow this
 - [ ] Inheritance for pseudo classes: `.myClass:hover .myOtherClass` doesn't work for now but it's planned
