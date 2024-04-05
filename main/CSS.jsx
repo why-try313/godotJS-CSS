@@ -3,8 +3,10 @@ import Lib       from "./ClassesLib.js";
 import Animation from "../utils/Animation/index.js";
 import Shader    from "../ressources/CSS_shader.gdshader";
 import ShaderMat from "../ressources/CSS_material.tres";
+import FontClass from '../utils/CSS_Font.js';
 
 let applyValuesKeys = null;
+const ROOT_FONT_SIZE = 16;
 
 export default class CSS extends godot.Panel {
     // The name of the element on CSS to reference itself
@@ -15,11 +17,13 @@ export default class CSS extends godot.Panel {
     #initialState = INITIAL_STATE;
     #states       = {};
     #parent       = null;
-    #currentState = {};
+    // #currentState = {};
     #mouseEvent   = { hover: false, focus: false, active: false };
     #style        = null;
+    #theme        = null;
     #material     = null;
 
+    #font           = {};
     #minSecDelay    = 0.1;
     #pendingRender  = false;
     #timeLastRender = 0;
@@ -43,7 +47,7 @@ export default class CSS extends godot.Panel {
             toggle:   (cls)      => { this.classList[ this.classList.contains(cls) ? "remove" : "add" ](cls); },
             replace:  (old, add) => { this.#classes = Array.from(new Set(this.#classes.map(cls => cls === old ? add : cls))); this.#buildClasses(); },
         };
-
+        this.currentState = {};
         const style = new godot.StyleBoxFlat();
         this.#style = style.duplicate();
         this.#style.anti_aliasing_size = 0.25;
@@ -59,7 +63,6 @@ export default class CSS extends godot.Panel {
 
         this.animations = [];
         this.hasAnimation = false;
-
         this.buildClasses();
     }
 
@@ -129,6 +132,8 @@ export default class CSS extends godot.Panel {
 
     afterReady() {
         Lib.init(this);
+        this.#font = new FontClass(this, ROOT_FONT_SIZE);
+        this.theme = null;
         // Set pass on each children to avoid losing
         // hover/active/focus on children mouse events
         const passFilter = MOUSE_FILTER.PASS;
@@ -178,7 +183,7 @@ export default class CSS extends godot.Panel {
     #loadCSS() {
         if (!this.#ready) return;
         this.states = {};
-        this.#currentState = JSON.parse(JSON.stringify({ ...this.#initialState }));
+        this.currentState = JSON.parse(JSON.stringify({ ...this.#initialState }));
         this.#currentStateName = "init";
         const declared = this.#getDeclaredCSSRules();
         const inline = this.#getInlineCSSRules();
@@ -212,7 +217,7 @@ export default class CSS extends godot.Panel {
         ];
         const otherStates = Object.keys(this.#states).filter(e => e !== "_default");
         if (this.#states._default) {
-            this.#states._default = { ...this.#currentState, ...this.#states._default };
+            this.#states._default = { ...this.currentState, ...this.#states._default };
             inheritFromDefault.forEach((prop) => {
                 if (this.#states._default[prop]) {
                     otherStates.forEach((state) => {
@@ -250,8 +255,7 @@ export default class CSS extends godot.Panel {
                 }
                 current = current.get_parent();
             }
-            const rules = Lib.getRules(path.reverse(), this);
-            return rules || {};
+            return Lib.getRules(path.reverse(), this) || {};
         }
         return {};
     }
@@ -260,8 +264,8 @@ export default class CSS extends godot.Panel {
         if (!this.#inline_css || this.#inline_css.length === 0) return {};
         const name  = this.#selfCSSname;
         const rules = Lib.parseCSS(this.#inline_css);
-        if (rules && rules[ name ] && rules[ name ].states && rules[ name ].states._default) {
-            return rules[ name ].states;
+        if (rules && rules.compounds && rules.compounds[ name ] && rules.compounds[ name ].states && rules.compounds[ name ].states._default) {
+            return rules.compounds[ name ].states;
         }
         return {};
     }
@@ -290,7 +294,7 @@ export default class CSS extends godot.Panel {
 
     #setNextStateValues(_nextState, name) {
         let nextState = JSON.parse(JSON.stringify(_nextState));
-        const cs = JSON.parse(JSON.stringify(this.#currentState));
+        const cs = JSON.parse(JSON.stringify(this.currentState));
         const parentRect = this.#parent.rect_size ? this.#parent.rect_size : this.get_viewport_rect().size;
         const p_x = parentRect.x;
         const p_y = parentRect.y;
@@ -301,7 +305,7 @@ export default class CSS extends godot.Panel {
             max: (p_x > p_y ? p_x : p_y) * 0.01
         };
         // Will be inherited from node tree
-        const fontSize = 16;
+        const fontSize = nextState["font-size"] ? nextState["font-size"].v : (this.get_theme_default_font() || { size: ROOT_FONT_SIZE }).size;
 
         // Media Queries
         if (nextState.media) {
@@ -334,11 +338,11 @@ export default class CSS extends godot.Panel {
 
         const Unit = {
             "%": (val, prop, v) =>  parentPercent[prop] ? parentPercent[prop](val/100) : 0,
-            // "em": (val, prop) => {},
+            "em": (val, prop) => fontSize * val,
             // "ex": (val, prop) => {},
             // "ch": (val, prop) => {},
             "px": (val) => val,
-            "rem": (val) => val * fontSize,
+            "rem": (val) => val * ROOT_FONT_SIZE,
             "vw": (val) => val * v_val.w,
             "vh": (val) => val * v_val.h,
             "vmin": (val) => val * v_val.min,
@@ -392,6 +396,9 @@ export default class CSS extends godot.Panel {
             "box-shadow.size":      (p) => { cs.style.shadow_size   = Val(p); },
             "box-shadow.color":     (p) => { cs.style.shadow_color  = nextState[p]; },
             "box-shadow.offset":    (p) => { cs.style.shadow_offset = nextState[p]; },
+            "color":                (p) => { if (!cs.font) { cs.font = {}; } cs.font.color = nextState[p]; },
+            "font-size":            (p) => { if (!cs.font) { cs.font = {}; } cs.font.size  = Val(p); },
+            "font-family":          (p) => { if (!cs.font) { cs.font = {}; } cs.font.name  = nextState[p]; },
         };
 
         if (!applyValuesKeys) { applyValuesKeys = Object.keys(applyValues); }
@@ -410,13 +417,20 @@ export default class CSS extends godot.Panel {
 
 
     #applyCurrentState(nextState, name) {
-        const current=  this.#currentState;
-        const methods = {
+        if (!this.#theme && nextState.font) {
+            this.#theme = new godot.Theme();
+            this.theme = this.#theme;
+        }
+
+        const current  = this.currentState;
+        const methods  = {
             // State objects reflect this private values
             // eg; nextState.style.prop = this.#style.prop
             material: this.material,
-            style: this.#style
+            style: this.#style,
+            font: this.#font,
         };
+
 
         const animates = this.#firstStateLoaded ? nextState.transition : {};
         this.hasAnimation = false;
@@ -443,6 +457,8 @@ export default class CSS extends godot.Panel {
             ]],
             [ "style",    Color,   [ "border_color", "shadow_color", "bg_color" ] ],
             [ "style",    Vector2, [ "shadow_offset" ] ],
+            [ "font",     Apply,   [ "size", "name" ] ],
+            [ "font",     Color,   [ "color" ] ],
         ].forEach((def) => {
             const sourceName = def[0];  const method     = def[1];
             const allProps   = def[2];  const methodName = method.name;
@@ -452,7 +468,7 @@ export default class CSS extends godot.Panel {
             const applyTo = sourceName ? methods[ sourceName ]   : this;
 
             allProps.forEach((prop) => {
-                if (typeof source[prop] === "undefined") return;
+                if (!source || typeof source[prop] === "undefined") return;
                 const nextValue = source[ prop ];
                 const path = sourceName ? sourceName+"."+prop : prop;
                 // isReload -> force reload even is values are the same
@@ -472,7 +488,7 @@ export default class CSS extends godot.Panel {
 
         this.#isReload = false;
         this.#firstStateLoaded = true;
-        this.#currentState = nextState;
+        this.currentState = nextState;
         this.#currentStateName  = name;
     }
 
