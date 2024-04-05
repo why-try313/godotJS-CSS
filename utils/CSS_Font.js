@@ -14,7 +14,7 @@ export default class FontClass {
         if (!this.#font) {
             this.#font = this.ref.get_theme_default_font();
             if (!this.#font) return;
-            this.ref.theme.set_default_font(font);
+            this.ref.theme.set_default_font(this.#font);
         }
         this.#font.size = parseInt(value);
     }
