@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>GodotJS CSS index</title>
+	<style>
+		:root { --mainColor: rgba(125,0,125); --mainColorTransparent: rgba(125,0,125, 0.65); }
+		html { min-height: 0; height: 100%; }
+		body { min-height: 0; height: 100%; padding: 0; margin: 0; font-family: Arial; color: #454545; }
+		#content {display: block; margin: 0 auto; padding: 45px 0; max-width: 1080px; }
+		table {text-align: left; width: 100%; border-collapse: collapse; border-radius: 7px; overflow: hidden; }
+		table tr:nth-child(odd) td { background-color: #f8f8f8; }
+		table thead th { background-color: #545454; color: #a5a5a5; }
+		table tr td, table thead th { padding: 10px 0; }
+		table tr td.supported { font-weight: bold; color:  #545454; }
+		table tr td:nth-child(1), table thead th:nth-child(1) { padding-left: 15px; }
+		table tr:last-child td { border-bottom: 2px solid #545454; }
+		.black  { vertical-align: middle; font-size: 14px; color: #454545; }
+		.green  { vertical-align: middle; font-size: 14px; color: green;   }
+		.orange { vertical-align: middle; font-size: 14px; color: orange;  }
+		.purple { vertical-align: middle; font-size: 14px; color: purple;  }
+		#search { display: block; padding: 0 25px; border-radius: 7px; transition: box-shadow 0.25s, border 1s; box-shadow: 0 1px 7px rgba(0,0,0,0.15); border: 2px solid transparent; }
+		#search input { display: block; width: 100%; padding: 14px 0; border: none; outline: none; }
+		#search:focus-within {  box-shadow: 0 1px 14px rgba(255,0,255,0.25);  border: 2px solid var(--mainColor); }
+		#stats { padding: 0 12px; }
+		#menu .menuitem { padding: 0 15px;  display: inline-block; vertical-align: middle; font-weight: bold; color: #878787; cursor: pointer; }
+		#menu .menuitem:last-child { padding-right: 0; }
+		#menu .menuitem.active { color: var(--mainColor); }
+		#pageContainer { display: block; width: auto; padding-top: 4%; }
+		#pageContainer .page { display: none; position: relative; width: 100%; }
+		#pageContainer .page.active { display: inline-block; }
+		.code { padding: 6px 8px; font-size: 14px;  display: inline-block; margin: 5px 0; vertical-align: middle; background-color: rgba(200,200,200,0.5); color: #656565; border-radius: 7px; transition: background-color 0.2s; }
+		.section { color: var(--mainColor); position: relative; }
+		.section:before { content: "• "; color: #878787; font-size: 34px; vertical-align: middle; }
+		.section:after { display: inline-block; opacity: 0.25; position: absolute; content: ""; top: 50%; left: 155px; right: 0; transform: translate(0%, -50%); height: 4px; background-color: var(--mainColor); }
+		a .code { background-color: var(--mainColorTransparent); color: #FFF; font-weight: bold; }
+		a:hover .code { background-color: var(--mainColor); }
+		a .code:before { content: "🔗"; margin-right: 7px; }
+	</style>
+</head>
+<body>
+	<div id="content">
+		<div id="header" style="line-height: 42px; display: flex; justify-content: space-between; align-items: center;">
+			<div>
+				<img src="https://raw.githubusercontent.com/why-try313/godot-ECMAScript-cookbook/master/wiki-images/godotJS-logo-125w.png" height="48" width="156" alt="" style="vertical-align: middle;">
+			</div>
+			<div id="menu">
+				<span style="color: var(--mainColor); opacity: 0.5;"><b>CSS</b> plugin <b>/</b> </span>
+				<div data-page="list"    class="menuitem active">All properties</div>
+				<div data-page="install" class="menuitem">Installation</div>
+				<div data-page="about"   class="menuitem">About</div>
+			</div>
+		</div>
+		<br><br><br>
+		<div id="pageContainer">
+			<div class="page active" data-page="list">
+				<h2 class="section">Properties</h2>
+				<div id="stats" style="text-align: right;"></div>
+				<br>
+				<div id="search">
+					<input type="text" oninput="window.search(event.target.value);" placeholder="Filter propeties...">
+				</div>
+				<br><br>
+				<table id="props">
+					<thead>
+						<th>Property</th>
+						<th>Type</th>
+						<th>Status</th>
+						<th>Note</th>
+					</thead>
+					<tbody></tbody>
+				</table>
+			</div>
+
+			<div class="page" data-page="install">
+				<h2 class="section">Install</h2>
+				<ol style="margin-top: 0;">
+					<li>Clone the repository in your project <span class="code">res://addons/</span> folder: <span class="code">git clone https://github.com/why-try313/godotJS-CSS.git</span></li>
+					<li>Enable the addon in Godot <span class="code">Project > Project Settings... > Plugins</span></li>
+				</ol>
+				<br>
+
+				<h2 class="section">Usage</h2>
+				<h4  style="margin-bottom: 0;">By creating a <span class="code">res://css/style.css</span> file:</h4>
+				<ol style="margin-top: 0;">
+					<li>Create a <span class="code">style.css</span> file in <span class="code">res://css/style.css</span></li>
+					<li>Insert a <span class="code">Div</span> element in your scene: <span class="code">Add Child Node > Node > CanvasItem > Panel > Div</span></li>
+					<li>Set <span class="code">class</span> or <span class="code">id</span> property on your <span class="code">Div</span> element</li>
+				</ol>
+				<br>
+				<h4 style="margin-bottom: 0;">With inline CSS</h4>
+				<ol style="margin-top: 0;">
+					<li>Insert a <span class="code">Div</span> element in your scene: <span class="code">Add Child Node > Node > CanvasItem > Panel > Div</span></li>
+					<li>Set <span class="code">inline CSS</span> property on your <span class="code">Div</span> element using <span class="code">self { ...properties }</span> as element (<span class="code">self:hover {}</span> and <span class="code">self:active {}</span> for mouse events)</li>
+				</ol>
+				<h4 style="margin-bottom: 0;">Note: you can combine <span class="code">class/id</span> values with <span class="code">inline CSS</span> properties (<span class="code">inline CSS</span> override CSS values)</h4>
+			</div>
+
+			<div class="page" data-page="about">
+				<h2 class="section">About</h2>
+				<h4>Related links</h4>
+				<ul>
+					<li><a href="https://github.com/Geequlim/ECMAScript"><span class="code">Godot JavaScript edition</span></a></li>
+					<li><a href="https://github.com/Geequlim/ECMAScript/releases"><span class="code">Godot JavaScript Builds</span></a></li>
+					<li><a href="https://www.w3schools.com/css/default.asp"><span class="code">CSS definitions</span></a></li>
+					<li><a href="https://github.com/AnidemDex/Godot-CustomResource/tree/main"><span class="code">Custom Resources code samples</span></a></li>
+				</ul>
+			</div>
+		</div>
+	</div>
+	<script>
+		const menu = document.querySelector("#menu");
+		const pageContainer = document.querySelector("#pageContainer");
+		let currentPage = "list";
+
+		const pages = {}; const menus = {};
+		Array.from(menu.children).forEach((menuEl) => {
+			const data = menuEl.getAttribute("data-page");
+			if (data && data.length > 0) { menus[ data ] = menuEl; }
+		});
+		Array.from(pageContainer.children).forEach((page) => {
+			const data = page.getAttribute("data-page");
+			const menuItem = data && menus[data];
+			if (data && data.length > 0) { pages[ data ] = { page, menuItem }; }
+		});
+		const displayPage = (name) => {
+			if (currentPage) {
+				pages[currentPage].page.classList.remove("active");
+				pages[currentPage].menuItem.classList.remove("active");
+			}
+			currentPage = name;
+			pages[currentPage].page.classList.add("active");
+			pages[currentPage].menuItem.classList.add("active");
+		};
+
+		menu.addEventListener("click", (evt) => {
+			const data = evt.target.getAttribute("data-page");
+			if (data && data.length > 0 && pages[data]) { displayPage(data); }
+		});
+
+		displayPage("list");
+
+
+		const table = document.querySelector("#props");
+		const stats = document.querySelector("#stats");
+		const tbody = table.querySelector("TBODY");
+		const ticks = [ `<span class="black">&bull; Not Supported</span>`, `<span class="green">&bull; Supported</span>`, `<span class="orange">&bull; Partially</span>`, `<span class="purple">&bull; Planned in future</span>` ];
+
+		const generateTR = (arr) => {
+			const supported = arr.filter((n) => properties[n].support !== 0).sort((a,b) => {
+				return properties[a].support > properties[b].support ? 0 : -1;
+			});
+			const unsupported = arr.filter((n) => properties[n].support === 0);
+			let nbFullySupported = 0;
+			const res = [ ...supported, ...unsupported ].map((name) => {
+				const prop = properties[name];
+				const fullySupported = prop.support === 1;
+				if (fullySupported) { nbFullySupported++; }
+				return `<tr>
+					<td class="${ fullySupported ? 'supported' : "" }">${ name }</td>
+					<td>${ prop.type }</td>
+					<td>${ ticks[ prop.support ] }</td>
+					<td>${ prop.note }</td>
+				</tr>`;
+			});
+			stats.innerHTML = `Supported: <b>${ nbFullySupported }</b>`;
+			return res;
+		};
+
+		window.search = (str) => {
+			console.log(str);
+			const html = (str && str.length > 0) ? generateTR(propKeys.filter(prop => prop.toLowerCase().indexOf(str) > -1)) : generateTR(propKeys);
+			tbody.innerHTML = html.join('');
+		};
+
+		const properties = {
+			"linear":                     { support: 1, type: "Transition", note: "" },
+			"easen-sine":                 { support: 1, type: "Transition", note: "" },
+			"ease-out-sine":              { support: 1, type: "Transition", note: "" },
+			"ease-in-out-sine":           { support: 1, type: "Transition", note: "" },
+			"ease-in-quad":               { support: 1, type: "Transition", note: "" },
+			"ease-out-quad":              { support: 1, type: "Transition", note: "" },
+			"ease-in-out-quad":           { support: 1, type: "Transition", note: "" },
+			"ease-in-cubic":              { support: 1, type: "Transition", note: "" },
+			"ease-out-cubic":             { support: 1, type: "Transition", note: "" },
+			"ease-in-out-cubic":          { support: 1, type: "Transition", note: "" },
+			"ease-in-quart":              { support: 1, type: "Transition", note: "" },
+			"ease-out-quart":             { support: 1, type: "Transition", note: "" },
+			"ease-in-out-quart":          { support: 1, type: "Transition", note: "" },
+			"ease-in-quint":              { support: 1, type: "Transition", note: "" },
+			"ease-out-quint":             { support: 1, type: "Transition", note: "" },
+			"ease-in-out-quint":          { support: 1, type: "Transition", note: "" },
+			"ease-in-circ":               { support: 1, type: "Transition", note: "" },
+			"ease-out-circ":              { support: 1, type: "Transition", note: "" },
+			"ease-in-back":               { support: 1, type: "Transition", note: "" },
+			"ease-in-expo":               { support: 1, type: "Transition", note: "" },
+			"ease-out-expo":              { support: 1, type: "Transition", note: "" },
+			"ease-in-out-expo":           { support: 1, type: "Transition", note: "" },
+			"ease-in-out-circ":           { support: 1, type: "Transition", note: "" },
+			"ease-out-back":              { support: 1, type: "Transition", note: "" },
+			"ease-in-elastic":            { support: 1, type: "Transition", note: "" },
+			"ease-in-elastic":            { support: 1, type: "Transition", note: "" },
+			"ease-out-elastic":           { support: 1, type: "Transition", note: "" },
+			"ease-in-out-elastic":        { support: 1, type: "Transition", note: "" },
+			"ease-out-bounce":            { support: 1, type: "Transition", note: "" },
+			"ease-in-bounce":             { support: 1, type: "Transition", note: "" },
+			"ease-out-bounce":            { support: 1, type: "Transition", note: "" },
+			"ease-in-out-bounce":         { support: 1, type: "Transition", note: "" },
+			"ease-in-bounce":             { support: 1, type: "Transition", note: "" },
+			"ease-out-bounce":            { support: 1, type: "Transition", note: "" },
+
+			"px":                         { support: 1, type: "Unit", note: "" },
+			"%":                          { support: 1, type: "Unit", note: "" },
+			"rem":                        { support: 1, type: "Unit", note: "" },
+			"vw":                         { support: 1, type: "Unit", note: "" },
+			"vh":                         { support: 1, type: "Unit", note: "" },
+			"vmin":                       { support: 1, type: "Unit", note: "" },
+			"vmax":                       { support: 1, type: "Unit", note: "" },
+			"em":                         { support: 3, type: "Unit", note: "" },
+			"ex":                         { support: 3, type: "Unit", note: "" },
+			"ch":                         { support: 3, type: "Unit", note: "" },
+
+			"calc":                       { support: 1, type: "Function", note: "" },
+			"min":                        { support: 3, type: "Function", note: "" },
+			"max":                        { support: 3, type: "Function", note: "" },
+
+			"background":                 { support: 1, type: "Property", note: "only color" },
+			"background-color":           { support: 1, type: "Property", note: "" },
+			"background-attachment":      { support: 0, type: "Property", note: "" },
+			"background-blend-mode":      { support: 0, type: "Property", note: "" },
+			"background-clip":            { support: 0, type: "Property", note: "" },
+			"background-image":           { support: 0, type: "Property", note: "" },
+			"background-origin":          { support: 0, type: "Property", note: "" },
+			"background-position":        { support: 0, type: "Property", note: "" },
+			"background-repeat":          { support: 0, type: "Property", note: "" },
+			"background-size":            { support: 0, type: "Property", note: "" },
+
+			"border":                     { support: 1, type: "Property", note: "only solid" },
+			"border-radius":              { support: 1, type: "Property", note: "" },
+			"border-bottom":              { support: 2, type: "Property", note: "uses border" },
+			"border-bottom-color":        { support: 2, type: "Property", note: "uses border" },
+			"border-bottom-left-radius":  { support: 2, type: "Property", note: "uses border" },
+			"border-bottom-right-radius": { support: 2, type: "Property", note: "uses border" },
+			"border-bottom-style":        { support: 2, type: "Property", note: "uses border" },
+			"border-bottom-width":        { support: 2, type: "Property", note: "uses border" },
+			"border-left":                { support: 2, type: "Property", note: "uses border" },
+			"border-left-color":          { support: 2, type: "Property", note: "uses border" },
+			"border-left-style":          { support: 2, type: "Property", note: "uses border" },
+			"border-left-width":          { support: 2, type: "Property", note: "uses border" },
+			"border-right":               { support: 2, type: "Property", note: "uses border" },
+			"border-right-color":         { support: 2, type: "Property", note: "uses border" },
+			"border-right-style":         { support: 2, type: "Property", note: "uses border" },
+			"border-right-width":         { support: 2, type: "Property", note: "uses border" },
+			"border-top":                 { support: 2, type: "Property", note: "uses border" },
+			"border-top-color":           { support: 2, type: "Property", note: "uses border" },
+			"border-top-left-radius":     { support: 2, type: "Property", note: "uses border" },
+			"border-top-right-radius":    { support: 2, type: "Property", note: "uses border" },
+			"border-top-style":           { support: 2, type: "Property", note: "uses border" },
+			"border-top-width":           { support: 2, type: "Property", note: "uses border" },
+			"border-color":               { support: 2, type: "Property", note: "uses border" },
+			"border-collapse":            { support: 0, type: "Property", note: "" },
+			"border-image":               { support: 0, type: "Property", note: "" },
+			"border-image-outset":        { support: 0, type: "Property", note: "" },
+			"border-image-repeat":        { support: 0, type: "Property", note: "" },
+			"border-image-slice":         { support: 0, type: "Property", note: "" },
+			"border-image-source":        { support: 0, type: "Property", note: "" },
+			"border-image-width":         { support: 0, type: "Property", note: "" },
+			"border-spacing":             { support: 0, type: "Property", note: "" },
+			"border-style":               { support: 0, type: "Property", note: "" },
+			"border-width":               { support: 0, type: "Property", note: "" },
+			"bottom":                     { support: 0, type: "Property", note: "" },
+			"box-shadow":                 { support: 1, type: "Property", note: "" },
+			"cursor":                     { support: 1, type: "Property", note: "" },
+			"display":                    { support: 2, type: "Property", note: "only 'none'" },
+			"height":                     { support: 1, type: "Property", note: "" },
+			"@import":                    { support: 1, type: "Property", note: "" },
+			"left":                       { support: 1, type: "Property", note: "" },
+			"max-height":                 { support: 1, type: "Property", note: "" },
+			"max-width":                  { support: 1, type: "Property", note: "" },
+			"min-height":                 { support: 1, type: "Property", note: "" },
+			"min-width":                  { support: 1, type: "Property", note: "" },
+			"opacity":                    { support: 1, type: "Property", note: "" },
+			"right":                      { support: 1, type: "Property", note: "" },
+			"top":                        { support: 1, type: "Property", note: "" },
+			"transform":                  { support: 2, type: "Property", note: "supports 'scale' and 'translate'" },
+			"transform-origin":           { support: 1, type: "Property", note: "" },
+			"transform-style":            { support: 0, type: "Property", note: "" },
+			"transition":                 { support: 1, type: "Property", note: "" },
+			"transition-delay":           { support: 0, type: "Property", note: "" },
+			"transition-duration":        { support: 0, type: "Property", note: "" },
+			"transition-property":        { support: 0, type: "Property", note: "" },
+			"transition-timing-function": { support: 0, type: "Property", note: "" },
+			"width":                      { support: 1, type: "Property", note: "" },
+			"@media":                     { support: 1, type: "Property", note: "" },
+
+			"@font-face":                 { support: 1, type: "Property", note: "" },
+			"font-size":                  { support: 1, type: "Property", note: "" },
+			"color":                      { support: 1, type: "Property", note: "" },
+			"font-family":                { support: 1, type: "Property", note: "" },
+			"font":                       { support: 2, type: "Property", note: "Use font-family instead" },
+			"font-kerning":               { support: 3, type: "Property", note: "" },
+			"font-size-adjust":           { support: 3, type: "Property", note: "" },
+			"font-stretch":               { support: 3, type: "Property", note: "" },
+			"font-style":                 { support: 3, type: "Property", note: "" },
+			"font-variant":               { support: 3, type: "Property", note: "" },
+			"font-weight":                { support: 3, type: "Property", note: "" },
+			"margin":                     { support: 0, type: "Property", note: "" },
+			"margin-bottom":              { support: 0, type: "Property", note: "" },
+			"margin-left":                { support: 0, type: "Property", note: "" },
+			"margin-right":               { support: 0, type: "Property", note: "" },
+			"margin-top":                 { support: 0, type: "Property", note: "" },
+			"padding":                    { support: 0, type: "Property", note: "" },
+			"padding-bottom":             { support: 0, type: "Property", note: "" },
+			"padding-left":               { support: 0, type: "Property", note: "" },
+			"padding-right":              { support: 0, type: "Property", note: "" },
+			"padding-top":                { support: 0, type: "Property", note: "" },
+
+			"align-content":              { support: 0, type: "Property", note: "" },
+			"align-items":                { support: 0, type: "Property", note: "" },
+			"align-self":                 { support: 0, type: "Property", note: "" },
+			"all":                        { support: 0, type: "Property", note: "" },
+			"animation":                  { support: 0, type: "Property", note: "" },
+			"animation-delay":            { support: 0, type: "Property", note: "" },
+			"animation-direction":        { support: 0, type: "Property", note: "" },
+			"animation-duration":         { support: 0, type: "Property", note: "" },
+			"animation-fill-mode":        { support: 0, type: "Property", note: "" },
+			"animation-iteration-count":  { support: 0, type: "Property", note: "" },
+			"animation-name":             { support: 0, type: "Property", note: "" },
+			"animation-play-state":       { support: 0, type: "Property", note: "" },
+			"animation-timing-function":  { support: 0, type: "Property", note: "" },
+			"backface-visibility":        { support: 0, type: "Property", note: "" },
+			"box-sizing":                 { support: 0, type: "Property", note: "" },
+			"caption-side":               { support: 0, type: "Property", note: "" },
+			"caret-color":                { support: 0, type: "Property", note: "" },
+			"@charset":                   { support: 0, type: "Property", note: "" },
+			"clear":                      { support: 0, type: "Property", note: "" },
+			"clip":                       { support: 0, type: "Property", note: "" },
+			"clip-path":                  { support: 0, type: "Property", note: "" },
+			"column-count":               { support: 0, type: "Property", note: "" },
+			"column-fill":                { support: 0, type: "Property", note: "" },
+			"column-gap":                 { support: 0, type: "Property", note: "" },
+			"column-rule":                { support: 0, type: "Property", note: "" },
+			"column-rule-color":          { support: 0, type: "Property", note: "" },
+			"column-rule-style":          { support: 0, type: "Property", note: "" },
+			"column-rule-width":          { support: 0, type: "Property", note: "" },
+			"column-span":                { support: 0, type: "Property", note: "" },
+			"column-width":               { support: 0, type: "Property", note: "" },
+			"columns":                    { support: 0, type: "Property", note: "" },
+			"content":                    { support: 0, type: "Property", note: "" },
+			"counter-increment":          { support: 0, type: "Property", note: "" },
+			"counter-reset":              { support: 0, type: "Property", note: "" },
+			"direction":                  { support: 0, type: "Property", note: "" },
+			"empty-cells":                { support: 0, type: "Property", note: "" },
+			"filter":                     { support: 0, type: "Property", note: "" },
+			"flex":                       { support: 0, type: "Property", note: "" },
+			"flex-basis":                 { support: 0, type: "Property", note: "" },
+			"flex-direction":             { support: 0, type: "Property", note: "" },
+			"flex-flow":                  { support: 0, type: "Property", note: "" },
+			"flex-grow":                  { support: 0, type: "Property", note: "" },
+			"flex-shrink":                { support: 0, type: "Property", note: "" },
+			"flex-wrap":                  { support: 0, type: "Property", note: "" },
+			"float":                      { support: 0, type: "Property", note: "" },
+			"grid":                       { support: 0, type: "Property", note: "" },
+			"grid-area":                  { support: 0, type: "Property", note: "" },
+			"grid-auto-columns":          { support: 0, type: "Property", note: "" },
+			"grid-auto-flow":             { support: 0, type: "Property", note: "" },
+			"grid-auto-rows":             { support: 0, type: "Property", note: "" },
+			"grid-column":                { support: 0, type: "Property", note: "" },
+			"grid-column-end":            { support: 0, type: "Property", note: "" },
+			"grid-column-gap":            { support: 0, type: "Property", note: "" },
+			"grid-column-start":          { support: 0, type: "Property", note: "" },
+			"grid-gap":                   { support: 0, type: "Property", note: "" },
+			"grid-row":                   { support: 0, type: "Property", note: "" },
+			"grid-row-end":               { support: 0, type: "Property", note: "" },
+			"grid-row-gap":               { support: 0, type: "Property", note: "" },
+			"grid-row-start":             { support: 0, type: "Property", note: "" },
+			"grid-template":              { support: 0, type: "Property", note: "" },
+			"grid-template-areas":        { support: 0, type: "Property", note: "" },
+			"grid-template-columns":      { support: 0, type: "Property", note: "" },
+			"grid-template-rows":         { support: 0, type: "Property", note: "" },
+			"hyphens":                    { support: 0, type: "Property", note: "" },
+			"justify-content":            { support: 0, type: "Property", note: "" },
+			"@keyframes":                 { support: 0, type: "Property", note: "" },
+			"letter-spacing":             { support: 0, type: "Property", note: "" },
+			"line-height":                { support: 0, type: "Property", note: "" },
+			"list-style":                 { support: 0, type: "Property", note: "" },
+			"list-style-image":           { support: 0, type: "Property", note: "" },
+			"list-style-position":        { support: 0, type: "Property", note: "" },
+			"list-style-type":            { support: 0, type: "Property", note: "" },
+			"object-fit":                 { support: 0, type: "Property", note: "" },
+			"object-position":            { support: 0, type: "Property", note: "" },
+			"order":                      { support: 0, type: "Property", note: "" },
+			"outline":                    { support: 0, type: "Property", note: "" },
+			"outline-color":              { support: 0, type: "Property", note: "" },
+			"outline-offset":             { support: 0, type: "Property", note: "" },
+			"outline-style":              { support: 0, type: "Property", note: "" },
+			"outline-width":              { support: 0, type: "Property", note: "" },
+			"overflow":                   { support: 0, type: "Property", note: "" },
+			"overflow-x":                 { support: 0, type: "Property", note: "" },
+			"overflow-y":                 { support: 0, type: "Property", note: "" },
+			"page-break-after":           { support: 0, type: "Property", note: "" },
+			"page-break-before":          { support: 0, type: "Property", note: "" },
+			"page-break-inside":          { support: 0, type: "Property", note: "" },
+			"perspective":                { support: 0, type: "Property", note: "" },
+			"perspective-origin":         { support: 0, type: "Property", note: "" },
+			"pointer-events":             { support: 0, type: "Property", note: "" },
+			"position":                   { support: 0, type: "Property", note: "" },
+			"quotes":                     { support: 0, type: "Property", note: "" },
+			"scroll-behavior":            { support: 0, type: "Property", note: "" },
+			"table-layout":               { support: 0, type: "Property", note: "" },
+			"text-align":                 { support: 0, type: "Property", note: "" },
+			"text-align-last":            { support: 0, type: "Property", note: "" },
+			"text-decoration":            { support: 0, type: "Property", note: "" },
+			"text-decoration-color":      { support: 0, type: "Property", note: "" },
+			"text-decoration-line":       { support: 0, type: "Property", note: "" },
+			"text-decoration-style":      { support: 0, type: "Property", note: "" },
+			"text-indent":                { support: 0, type: "Property", note: "" },
+			"text-justify":               { support: 0, type: "Property", note: "" },
+			"text-overflow":              { support: 0, type: "Property", note: "" },
+			"text-shadow":                { support: 0, type: "Property", note: "" },
+			"text-transform":             { support: 0, type: "Property", note: "" },
+			"user-select":                { support: 0, type: "Property", note: "" },
+			"vertical-align":             { support: 0, type: "Property", note: "" },
+			"visibility":                 { support: 0, type: "Property", note: "" },
+			"white-space":                { support: 0, type: "Property", note: "" },
+			"word-break":                 { support: 0, type: "Property", note: "" },
+			"word-spacing":               { support: 0, type: "Property", note: "" },
+			"word-wrap":                  { support: 0, type: "Property", note: "" },
+			"writing-mode":               { support: 0, type: "Property", note: "" },
+			"z-index":                    { support: 0, type: "Property", note: "" },
+		};
+
+		const propKeys = Object.keys(properties);
+		search();
+	</script>
+</body>
+</html>
