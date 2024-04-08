@@ -202,7 +202,7 @@ const isValidCSSValue = (value, prop, vars) => {
         "border-radius": directionsAxis,
         // "background": color, §§ turnPropIntoSubproperties=>background
         "background-color": color,
-        "border-size": px,
+        "border-width": px,
         "border-color": color,
         "opacity": float,
         "cursor": (str) => CSSCursors[str.trim()],

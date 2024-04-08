@@ -386,7 +386,7 @@ export default class CSS extends godot.Panel {
             "cursor":     (p) => { cs.mouse_default_cursor_shape = GDCursors[ nextState[p] ]; },
             "background-color":     (p) => { if (this.hasFilter) { cs.material["set_color"] = nextState[p] } else { cs.style["bg_color"] = nextState[p]; } },
             "border-radius":        (p) => { Object.keys(nextState[p]).forEach((key) => { cs.style[ "corner_radius_"+key ] = nextState[p][key].v; }); },
-            "border-size":          (p) => { [ "left", "right", "top", "bottom" ].forEach((param) => { cs.style[ "border_width_" + param ] = nextState[ p ].v; }); },
+            "border-width":         (p) => { [ "left", "right", "top", "bottom" ].forEach((param) => { cs.style[ "border_width_" + param ] = nextState[ p ].v; }); },
             "border-color":         (p) => { cs.style.border_color = nextState[ p ]; },
 
             "transform.scale":      (p) => { cs.rect_scale = nextState[p]; },
