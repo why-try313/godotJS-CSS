@@ -7,6 +7,32 @@ import FontClass from '../utils/CSS_Font.js';
 
 let applyValuesKeys = null;
 const ROOT_FONT_SIZE = 16;
+const mods = {
+    Apply   : (value) => value,
+    Vector2 : (value) => new godot.Vector2(value.x, value.y),
+    Color   : (value) => new godot.Color(...value),
+};
+
+const MODIFIERS = [// Sourcs        Method   Props to be applied
+    [ null,       mods.Apply,   [ 
+                                  "margin_left", "margin_right", "margin_top", "margin_bottom",
+                                  "anchor_left", "anchor_right", "anchor_top", "anchor_bottom",
+                                  "mouse_default_cursor_shape"
+    ]],
+    [ null,       mods.Vector2, [ "rect_scale", "rect_pivot_offset" ] ],
+    [ null,       mods.Color,   [ "modulate" ] ],
+    [ "material", mods.Apply,   [ "blur_amount" ]], // has filter
+    [ "material", mods.Color,   [ "set_color" ] ], // has filter
+    [ "style",    mods.Apply,   [
+                                  "shadow_size",
+                                  "corner_radius_top_left", "corner_radius_top_right", "corner_radius_bottom_left", "corner_radius_bottom_right",
+                                  "border_width_left", "border_width_right", "border_width_top", "border_width_bottom"
+    ]],
+    [ "style",    mods.Color,   [ "border_color", "shadow_color", "bg_color" ] ],
+    [ "style",    mods.Vector2, [ "shadow_offset" ] ],
+    [ "font",     mods.Apply,   [ "size", "name" ] ],
+    [ "font",     mods.Color,   [ "color" ] ],
+];
 
 export default class CSS extends godot.Panel {
     // The name of the element on CSS to reference itself
@@ -131,50 +157,56 @@ export default class CSS extends godot.Panel {
 
 
     afterReady() {
-        Lib.init(this);
-        this.#font = new FontClass(this, ROOT_FONT_SIZE);
-        this.theme = null;
-        // Set pass on each children to avoid losing
-        // hover/active/focus on children mouse events
-        const passFilter = MOUSE_FILTER.PASS;
-        this.mouse_filter = passFilter;
-
-        const walker = (element) => {
-            const children = element.get_children();
-            if (!children || children.length === 0) return;
-            children.forEach((child) => {
-                child.mouse_filter = passFilter;
-                if (!children.compound) {
-                    const anchorSum = children.anchor_left + children.anchor_top + children.anchor_right + children.anchor_bottom;
-                    if (anchorSum  === 0) {
-                        children.anchor_left   = 0;
-                        children.anchor_top    = 0;
-                        children.anchor_right  = 1;
-                        children.anchor_bottom = 1;
+        const resetChildrenAnchors = () => {
+            // Set pass on each children to avoid losing
+            // hover/active/focus on children mouse events
+            const passFilter = MOUSE_FILTER.PASS;
+            this.mouse_filter = passFilter;
+            const walker = (element) => {
+                const children = element.get_children();
+                if (!children || children.length === 0) return;
+                children.forEach((child) => {
+                    child.mouse_filter = passFilter;
+                    if (!children.compound) {
+                        const anchorSum = children.anchor_left + children.anchor_top + children.anchor_right + children.anchor_bottom;
+                        if (anchorSum  === 0) {
+                            children.anchor_left   = 0;
+                            children.anchor_top    = 0;
+                            children.anchor_right  = 1;
+                            children.anchor_bottom = 1;
+                        }
                     }
-                }
-                walker(child);
-            });
+                    walker(child);
+                });
+            };
+            walker(this);
         };
-        walker(this);
-        // Set in deferred to give it time to draw
-        // otherwise parent.rect_size{ x, y } = 0
-        let parent = null;
-        const root = this.get_tree().edited_scene_root;
-        let cursor = this.get_parent();
-        while(cursor) {
-            if (cursor.rect_size) {
-                parent = cursor;
-                cursor = null;
-            } else if (cursor === root) {
-                cursor = null;
-            } else {
-                cursor = cursor.has_method("get_parent") ? cursor.get_parent() : null;
-            }
-        }
 
-        this.#parent = parent || this.get_parent();
-        this.#ready = true;
+        const getNearest2Dparent = () => {
+            // Set in deferred to give it time to draw
+            // otherwise parent.rect_size{ x, y } = 0
+            let parent = null;
+            const root = this.get_tree().edited_scene_root;
+            let cursor = this.get_parent();
+            while(cursor) {
+                if (cursor.rect_size) {
+                    parent = cursor;
+                    cursor = null;
+                } else if (cursor === root) {
+                    cursor = null;
+                } else {
+                    cursor = cursor.has_method("get_parent") ? cursor.get_parent() : null;
+                }
+            }
+            return parent;
+        };
+
+        Lib.init(this);
+        resetChildrenAnchors();
+        this.#font   = new FontClass(this, ROOT_FONT_SIZE);
+        this.theme   = null;
+        this.#parent = getNearest2Dparent() || this.get_parent();
+        this.#ready  = true;
         this.#loadCSS();
     }
 
@@ -436,30 +468,7 @@ export default class CSS extends godot.Panel {
         this.hasAnimation = false;
         this.animations = [];
 
-        const Apply   = (value) => value;
-        const Vector2 = (value) => new godot.Vector2(value.x, value.y);
-        const Color   = (value) => new godot.Color(...value);
-
-        [// Sourcs        Method   Props to be applied
-            [ null,       Apply,   [ 
-                                     "margin_left", "margin_right", "margin_top", "margin_bottom",
-                                     "anchor_left", "anchor_right", "anchor_top", "anchor_bottom",
-                                     "mouse_default_cursor_shape"
-            ]],
-            [ null,       Vector2, [ "rect_scale", "rect_pivot_offset" ] ],
-            [ null,       Color,   [ "modulate" ] ],
-            [ "material", Apply,   [ "blur_amount" ]], // has filter
-            [ "material", Color,   [ "set_color" ] ], // has filter
-            [ "style",    Apply,   [
-                                     "shadow_size",
-                                     "corner_radius_top_left", "corner_radius_top_right", "corner_radius_bottom_left", "corner_radius_bottom_right",
-                                     "border_width_left", "border_width_right", "border_width_top", "border_width_bottom"
-            ]],
-            [ "style",    Color,   [ "border_color", "shadow_color", "bg_color" ] ],
-            [ "style",    Vector2, [ "shadow_offset" ] ],
-            [ "font",     Apply,   [ "size", "name" ] ],
-            [ "font",     Color,   [ "color" ] ],
-        ].forEach((def) => {
+        MODIFIERS.forEach((def) => {
             const sourceName = def[0];  const method     = def[1];
             const allProps   = def[2];  const methodName = method.name;
 
