@@ -17,7 +17,7 @@ const MODIFIERS = [// Sourcs        Method   Props to be applied
     [ null,       mods.Apply,   [ 
                                   "margin_left", "margin_right", "margin_top", "margin_bottom",
                                   "anchor_left", "anchor_right", "anchor_top", "anchor_bottom",
-                                  "mouse_default_cursor_shape"
+                                  "mouse_default_cursor_shape", "rect_clip_content"
     ]],
     [ null,       mods.Vector2, [ "rect_scale", "rect_pivot_offset" ] ],
     [ null,       mods.Color,   [ "modulate" ] ],
@@ -162,6 +162,7 @@ export default class CSS extends godot.Panel {
             // hover/active/focus on children mouse events
             const passFilter = MOUSE_FILTER.PASS;
             this.mouse_filter = passFilter;
+            this.rect_clip_content = true;
             const walker = (element) => {
                 const children = element.get_children();
                 if (!children || children.length === 0) return;
@@ -431,6 +432,7 @@ export default class CSS extends godot.Panel {
             "color":                (p) => { if (!cs.font) { cs.font = {}; } cs.font.color = nextState[p]; },
             "font-size":            (p) => { if (!cs.font) { cs.font = {}; } cs.font.size  = Val(p); },
             "font-family":          (p) => { if (!cs.font) { cs.font = {}; } cs.font.name  = nextState[p]; },
+            "overflow":             (p) => { const val = Val(p); cs.rect_clip_content = val === "visible"; },
         };
 
         if (!applyValuesKeys) { applyValuesKeys = Object.keys(applyValues); }

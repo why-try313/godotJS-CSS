@@ -215,6 +215,8 @@ const isValidCSSValue = (value, prop, vars) => {
         "font-family": (str) => typeof str === "string" ? str : null,
         "font-size": px,
 
+        "overflow": (str) => str === 'visible' ? str : null,
+
         "transition": (str) => {
             const props = str.split(/,[\ ]+/g);
             const value = {};
