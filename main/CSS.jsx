@@ -1,4 +1,4 @@
-import { INITIAL_STATE, MOUSE_FILTER, GDCursors }  from "../utils/CSS_Constants.js";
+import { INITIAL_STATE, MOUSE_FILTER, INHERITED_PROPS, GDCursors }  from "../utils/CSS_Constants.js";
 import Lib       from "./ClassesLib.js";
 import Animation from "../utils/Animation/index.js";
 import Shader    from "../ressources/CSS_shader.gdshader";
@@ -171,10 +171,8 @@ export default class CSS extends godot.Panel {
                     if (!children.compound) {
                         const anchorSum = children.anchor_left + children.anchor_top + children.anchor_right + children.anchor_bottom;
                         if (anchorSum  === 0) {
-                            children.anchor_left   = 0;
-                            children.anchor_top    = 0;
-                            children.anchor_right  = 1;
-                            children.anchor_bottom = 1;
+                            ["anchor_left, anchor_top"].forEach((prop)     => { children[prop] = 0; });
+                            ["anchor_right, anchor_bottom"].forEach((prop) => { children[prop] = 1; });
                         }
                     }
                     walker(child);
@@ -233,20 +231,13 @@ export default class CSS extends godot.Panel {
             };
         });
         this.#states = rules;
-        const inheritFromDefault = [ // Set defaults to other states
-            "transform.translate",
-            "background-color",
-            "border-radius",
-            "opacity",
-            "right", "bottom",
-        ];
         const customMergers = [ // Merge objects with [ target ] priority 
             "transition"
         ];
         const otherStates = Object.keys(this.#states).filter(e => e !== "_default");
         if (this.#states._default) {
             this.#states._default = { ...this.currentState, ...this.#states._default };
-            inheritFromDefault.forEach((prop) => {
+            INHERITED_PROPS.forEach((prop) => {
                 if (this.#states._default[prop]) {
                     otherStates.forEach((state) => {
                         if (typeof this.#states[ state ][ prop ] === "undefined") {
