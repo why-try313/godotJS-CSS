@@ -5,14 +5,11 @@ const copy = (obj) => JSON.parse(JSON.stringify(obj));
 
 class ClassesLib {
     #rootFolder = "res://css";
-    #rootFile = "res://css/style.css";
-    #states = {};
-    #compounds = [];
-    #shortPaths = {
-        // .class/#id: [ index, index, ... ]
-    };
-    // Trigger on reload
-    #elements = {};
+    #rootFile   = "res://css/style.css";
+    #states     = {};
+    #compounds  = [];
+    #shortPaths = { /* .class/#id: [ index, index, ... ] */ };
+    #elements   = { /* Trigger on reload */ }; 
 
     constructor() {
         this.fonts = {};
@@ -20,21 +17,15 @@ class ClassesLib {
         this.nodeInTree = null;
         this.getMainCSSFile = this.getMainCSSFile.bind(this);
 
-        try {
-            this.#getMainCSSFile();
-        } catch(e) {
-            log(e);
-        }
+        try { this.#getMainCSSFile(); }
+        catch(e) { log(e); }
     }
 
     getMainCSSFile() {
         this.#getMainCSSFile();
         Object.values(this.#elements).forEach(e => {
-            if (e && e.is_inside_tree()) {
-                e.reload();
-            } else {
-                delete this.#elements[e];
-            }
+            if (e && e.is_inside_tree()) { e.reload(); }
+            else { delete this.#elements[e]; }
         });
     }
 
@@ -120,8 +111,8 @@ class ClassesLib {
         this.fonts = rules.fonts || {};
         if (!rules || !rules.compounds || Object.keys(rules.compounds).length === 0) throw new Error("No rules found");
 
-        this.#states = {};
-        this.#compounds = [];
+        this.#states     = {};
+        this.#compounds  = [];
         this.#shortPaths = {};
 
         const compounds = Object.keys(rules.compounds).map((identifier) => {
@@ -193,10 +184,7 @@ class ClassesLib {
     }
 
     parseCSS(str) {
-        // let rules = null;
         const rules = CSStringToObject(str);
-        // try {
-        // } catch(e) { console.log("ERROR", e); }
         return rules;
     }
 

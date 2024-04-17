@@ -12,8 +12,6 @@ let IS_WATCHED  = false;
 let LAST_UPDATE = 0;
 let css_import_plugin = null;
 const CSSClass = godot.load("res://addons/godotJS-CSS/css_resource.gd");
-// const CSSLoader = godot.load("res://addons/godotJS-CSS/ressources/css_resource_importer.gd");
-// const CSSSaver = godot.load("res://addons/godotJS-CSS/ressources/css_resource_saver.gd");
 
 export default class Main extends godot.EditorPlugin {
 

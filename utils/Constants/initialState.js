@@ -11,7 +11,7 @@ export default {
     "cursor": "default",
     "opacity": { v: 1, p: false },
     "box-shadow.size": { v: 0, p: false },
-    style: {},
-    material: {},
-    media: null,
+    "style":    {},
+    "material": {},
+    "media":     null,
 };

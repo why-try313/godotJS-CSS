@@ -13,7 +13,8 @@ const mods = {
     Color   : (value) => new godot.Color(...value),
 };
 
-const MODIFIERS = [// Sourcs        Method   Props to be applied
+const MODIFIERS = [
+    // Source     Method         Props to be applied
     [ null,       mods.Apply,   [ 
                                   "margin_left", "margin_right", "margin_top", "margin_bottom",
                                   "anchor_left", "anchor_right", "anchor_top", "anchor_bottom",
@@ -43,7 +44,7 @@ export default class CSS extends godot.Panel {
     #initialState = INITIAL_STATE;
     #states       = {};
     #parent       = null;
-    // #currentState = {};
+
     #mouseEvent   = { hover: false, focus: false, active: false };
     #style        = null;
     #theme        = null;
@@ -229,10 +230,11 @@ export default class CSS extends godot.Panel {
                 ...inlineRules,
             };
         });
+
         this.#states = rules;
-        const customMergers = [ // Merge objects with [ target ] priority 
-            "transition"
-        ];
+
+        // Merge objects with [ target ] priority 
+        const customMergers = [ "transition" ];
         const otherStates = Object.keys(this.#states).filter(e => e !== "_default");
         if (this.#states._default) {
             this.#states._default = { ...this.currentState, ...this.#states._default };
@@ -360,11 +362,9 @@ export default class CSS extends godot.Panel {
             return eval(str); // string has been sanitized by the parser
         };
 
-        const Unit = {
+        const Unit = { // Ingored units: ex, ch (too specific for gameEngine font data)
             "%": (val, prop, v) =>  parentPercent[prop] ? parentPercent[prop](val/100) : 0,
             "em": (val, prop) => fontSize * val,
-            // "ex": (val, prop) => {},
-            // "ch": (val, prop) => {},
             "px": (val) => val,
             "rem": (val) => val * ROOT_FONT_SIZE,
             "vw": (val) => val * v_val.w,
@@ -383,7 +383,7 @@ export default class CSS extends godot.Panel {
         };
 
         const applyValues = {
-        //  this    <----- p stands for prop, aka this (see arrow to left)
+            //  prop      <----- p is just a shorthand for the property (eg: p = "prop")
             "left":       (p) => { const val = Val(p)/p_x; cs.anchor_right = cs.anchor_left = val; },
             "top":        (p) => { const val = Val(p)/p_y; cs.anchor_top = cs.anchor_bottom = val; },
             "width":      (p) => { const val = Val(p); cs.margin_left = 0; cs.margin_right + val; cs.width = val; },

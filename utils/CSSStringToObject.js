@@ -193,14 +193,11 @@ const isValidCSSValue = (value, prop, vars) => {
         "top":    unit,     "bottom": unit,
         "max-width": unit,  "min-width": unit,
         "max-height": unit, "min-height": unit,
-        // transform       -- separator = space
         "transform.translate": percentsAxis,
         "transform.scale": floatAxis,
         "transform-origin": percentsAxis,
-        // backdrop-filter -- separator = space
         "backdrop-filter.blur": px,
         "border-radius": directionsAxis,
-        // "background": color, §§ turnPropIntoSubproperties=>background
         "background-color": color,
         "border-width": px,
         "border-color": color,
@@ -237,9 +234,6 @@ const isValidCSSValue = (value, prop, vars) => {
             });
             return Object.keys(value).length > 0 ? value : undefined;
         },
-        // background-color
-        // box-shadow      -- separator = space
-        // border          -- separator = space
     };
 
     if (!transforms[prop]) { return false; }
