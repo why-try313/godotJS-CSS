@@ -50,11 +50,7 @@ export default class CSS extends godot.Panel {
     #material     = null;
 
     #font           = {};
-    #minSecDelay    = 0.1;
-    #pendingRender  = false;
-    #timeLastRender = 0;
 
-    #busy        = false;
     #id          = "";
     #classes     = [];
     #classString = "";
@@ -62,6 +58,7 @@ export default class CSS extends godot.Panel {
     #inline_css  = "";
     #isReload    = false;
     #firstStateLoaded = false; // Trigger to avoid animation on first CSS render
+    #callStack = {};
 
     constructor() {
         super();
@@ -84,6 +81,7 @@ export default class CSS extends godot.Panel {
         this.#material.set("shader_param/set_color", new godot.Color(...testState.backgroundColor));
 
         this.reload = this.reload.bind(this);
+        this.defer  = this.defer.bind(this);
         this.afterReady = this.afterReady.bind(this);
         this.hasFilter = false;
 
@@ -118,35 +116,37 @@ export default class CSS extends godot.Panel {
         }
 
         this.get_tree().root.connect("size_changed", () => {
-            this.#pendingRender = true;
+            this.defer("#reloadState", this.#reloadState); // console.log("resized");
         });
 
         this.connect("tree_entered", () => { this.reload(); });
 
         // hover
-        this.connect("mouse_entered", () => { this.#mouseEvent.hover = true;  this.call_deferred("mouseEvent"); });
-        this.connect("mouse_exited",  () => { this.#mouseEvent.hover = false; this.call_deferred("mouseEvent"); });
+        this.connect("mouse_entered", () => { this.#mouseEvent.hover = true;  this.defer("#setState", this.#setState); });
+        this.connect("mouse_exited",  () => { this.#mouseEvent.hover = false; this.defer("#setState", this.#setState); });
         // Keypad hover
-        this.connect("focus_entered", () => { this.#mouseEvent.focus = true;  this.call_deferred("mouseEvent"); });
-        this.connect("focus_exited",  () => { this.#mouseEvent.focus = false; this.call_deferred("mouseEvent"); });
+        this.connect("focus_entered", () => { this.#mouseEvent.focus = true;  this.defer("#setState", this.#setState); });
+        this.connect("focus_exited",  () => { this.#mouseEvent.focus = false; this.defer("#setState", this.#setState); });
 
         // mouse clicks, mousedown AND mouseup
         this.connect("gui_input", (event) => {
             if (event.get_class() !== "InputEventMouseButton" || event.button_index !== 1) return;
             this.#mouseEvent.active = event.pressed;
-            this.call_deferred("mouseEvent");
+            this.defer("#setState", this.#setState);
         });
     }
 
 
-    mouseEvent() {
-        if (this.#busy) return;
-        this.#busy = true;
-        this.#setState();
-        this.call_deferred("mouseEventEnded");
+    defer(fnName, fn) {
+        if (fnName) { this.#callStack[ fnName ] = fn; this.call_deferred("defer"); }
+        else if (!fnName && Object.keys(this.#callStack).length > 0) {
+            Object.keys(this.#callStack).forEach((fnName) => {
+                const func = this.#callStack[fnName];
+                if (typeof func === "function") { func.bind(this)(); }
+            });
+            this.#callStack = {};
+        }
     }
-
-    mouseEventEnded() { this.#busy = false; }
 
 
     _ready() {
@@ -190,14 +190,9 @@ export default class CSS extends godot.Panel {
             const root = this.get_tree().edited_scene_root;
             let cursor = this.get_parent();
             while(cursor) {
-                if (cursor.rect_size) {
-                    parent = cursor;
-                    cursor = null;
-                } else if (cursor === root) {
-                    cursor = null;
-                } else {
-                    cursor = cursor.has_method("get_parent") ? cursor.get_parent() : null;
-                }
+                if (cursor.rect_size) { parent = cursor; cursor = null; }
+                else if (cursor === root) { cursor = null; }
+                else { cursor = cursor.has_method("get_parent") ? cursor.get_parent() : null; }
             }
             return parent;
         };
@@ -272,7 +267,9 @@ export default class CSS extends godot.Panel {
 
         this.hasFilter = hasFilter;
         this.material = hasFilter ? this.#material : null;
-        if (hasFilter) { this.#style.bg_color = new godot.Color(0,1,0,0); }
+        if (hasFilter) {
+            this.#style.bg_color = new godot.Color(0,1,0,0);
+        }
 
         this.#setState();
     }
@@ -303,14 +300,18 @@ export default class CSS extends godot.Panel {
         return {};
     }
 
-
-    #setState() {
-        if (!this.#ready) return;
+    #getState() {
         let state = "_default";
         if (this.#mouseEvent.hover  && this.#states["hover"])  { state = "hover";  }
         if (this.#mouseEvent.focus  && this.#states["focus"])  { state = "focus";  }
         if (this.#mouseEvent.focus  && this.#states["hover"])  { state = "hover";  }
         if (this.#mouseEvent.active && this.#states["active"]) { state = "active"; }
+        return state;
+    }
+
+    #setState() {
+        const state = this.#getState();
+        if (!this.#ready) return;
         if (this.#currentStateName === state) return;
         if (!this.#states[ state ]) return;
 
@@ -415,8 +416,8 @@ export default class CSS extends godot.Panel {
             },
 
 
-            "opacity":    (p) => { cs.modulate = [ 1.0, 1.0, 1.0, Val(p) ]; },
-            "cursor":     (p) => { cs.mouse_default_cursor_shape = GDCursors[ nextState[p] ]; },
+            "opacity":              (p) => { cs.modulate = [ 1.0, 1.0, 1.0, Val(p) ]; },
+            "cursor":               (p) => { cs.mouse_default_cursor_shape = GDCursors[ nextState[p] ]; },
             "background-color":     (p) => { if (this.hasFilter) { cs.material["set_color"] = nextState[p] } else { cs.style["bg_color"] = nextState[p]; } },
             "border-radius":        (p) => { Object.keys(nextState[p]).forEach((key) => { cs.style[ "corner_radius_"+key ] = nextState[p][key].v; }); },
             "border-width":         (p) => { [ "left", "right", "top", "bottom" ].forEach((param) => { cs.style[ "border_width_" + param ] = nextState[ p ].v; }); },
@@ -432,7 +433,7 @@ export default class CSS extends godot.Panel {
             "color":                (p) => { if (!cs.font) { cs.font = {}; } cs.font.color = nextState[p]; },
             "font-size":            (p) => { if (!cs.font) { cs.font = {}; } cs.font.size  = Val(p); },
             "font-family":          (p) => { if (!cs.font) { cs.font = {}; } cs.font.name  = nextState[p]; },
-            "overflow":             (p) => { const val = Val(p); cs.rect_clip_content = val === "visible"; },
+            "overflow":             (p) => { const val = nextState[p]; cs.rect_clip_content = val === "hidden"; },
         };
 
         if (!applyValuesKeys) { applyValuesKeys = Object.keys(applyValues); }
@@ -510,19 +511,6 @@ export default class CSS extends godot.Panel {
     }
 
     _process(delta) {
-        if (this.#timeLastRender < this.#minSecDelay+1) {
-            this.#timeLastRender = this.#timeLastRender + delta;
-        }
-        // Soft reload on window resize as the user shouldn't change the window
-        // size for fun, yet the window shouldn't re-run calculation every pixel resized 
-        // Reducing this is up to you but is not recommended as they delay won't be applied
-        // it transitions, as long as the size stays the same the style is applied only once
-        if (this.#pendingRender && this.#timeLastRender > this.#minSecDelay) {
-            this.#reloadState();
-            this.#timeLastRender = 0;
-            this.#pendingRender = false;
-        }
-
         if (this.hasAnimation) {
             this.animations = this.animations.map(anim => { anim.play(delta); return anim; }).filter(anim => !anim.ended);
             this.hasAnimation = this.animations.length > 0;

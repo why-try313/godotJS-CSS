@@ -215,7 +215,10 @@ const isValidCSSValue = (value, prop, vars) => {
         "font-family": (str) => typeof str === "string" ? str : null,
         "font-size": px,
 
-        "overflow": (str) => str === 'visible' ? str : null,
+        "overflow": (str) => {
+            const acceptedValues = ["visible", "hidden", "vertical", "horizontal"];
+            return (typeof str === "string" && acceptedValues.indexOf(str.trim()) > -1) ? str.trim() : undefined;
+        },
 
         "transition": (str) => {
             const props = str.split(/,[\ ]+/g);
@@ -298,7 +301,7 @@ const turnPropIntoSubproperties = {
             [ "box-shadow.size", arr[2] ],
             [ "box-shadow.color", arr[3] || "#000000" ],
         ];
-    }
+    },
 };
 
 const extractRules = (rulesArray) => {
