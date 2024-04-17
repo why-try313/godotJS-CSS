@@ -10,7 +10,7 @@ export const defaultMedia    = _defaultMedia;
 export const MOUSE_FILTER    = _MOUSE_FILTER;
 export const CSSCursors      = _CSSCursors;
 export const GDCursors       = _GDCursors;
-export const INHERITED_PROPS = __INHERITED_PROPS;
+export const INHERITED_PROPS = _INHERITED_PROPS;
 
 const cursors = {};
 Object.keys(CSSCursors).forEach((cursor) => { GDCursors[cursor]; });
