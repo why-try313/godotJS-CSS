@@ -162,7 +162,6 @@ export default class CSS extends godot.Panel {
             // hover/active/focus on children mouse events
             const passFilter = MOUSE_FILTER.PASS;
             this.mouse_filter = passFilter;
-            this.rect_clip_content = true;
             const walker = (element) => {
                 const children = element.get_children();
                 if (!children || children.length === 0) return;
