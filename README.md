@@ -5,6 +5,16 @@ CSS support integration for Godot JavaScript<br/>
 
 <img src="https://i.imgur.com/EAs5xVO.png"/><br/><br/>
 
+<hr>
+
+# GD4 support in progress
+In order to detch the project from GodotJsvascript, a [GD4 translation](https://github.com/why-try313/godotJS-CSS/issues/1) is in progress.<br>
+Current [JS features](https://why-try313.github.io/godotJS-CSS/) will be supported and new features like in-editor CSS editing will be added.<br>
+Make sur to watch this repo if you're interested, the project <b>will probably be renamed/moved</b> to a better suiting name.
+
+<hr>
+<br>
+
 ### Supported Godot versions:
 - Godot JavaScript 3.x
 - <s>Godot JS 4.x</s> (too unstable for now)
